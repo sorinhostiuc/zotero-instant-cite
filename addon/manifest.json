@@ -1,0 +1,20 @@
+{
+  "manifest_version": 2,
+  "name": "__addonName__",
+  "version": "__buildVersion__",
+  "description": "Search + Add + Cite academic papers without leaving Zotero",
+  "homepage_url": "https://github.com/mapispev/zotero-instant-cite",
+  "author": "Sorin Hostiuc",
+  "icons": {
+    "48": "chrome/content/icons/favicon@0.5x.png",
+    "96": "chrome/content/icons/favicon.png"
+  },
+  "applications": {
+    "zotero": {
+      "id": "instantcite@sorin.hostiuc",
+      "update_url": "https://github.com/mapispev/zotero-instant-cite/releases/latest/download/update.json",
+      "strict_min_version": "6.999",
+      "strict_max_version": "9.*"
+    }
+  }
+}

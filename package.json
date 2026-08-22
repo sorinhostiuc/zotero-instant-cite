@@ -1,0 +1,34 @@
+{
+  "name": "zotero-instant-cite",
+  "version": "0.6.11",
+  "description": "Search + Add + Cite academic papers without leaving your workflow",
+  "config": {
+    "addonName": "Zotero Instant Cite",
+    "addonID": "instantcite@sorin.hostiuc",
+    "addonRef": "instantcite",
+    "addonInstance": "InstantCite"
+  },
+  "scripts": {
+    "start": "zotero-plugin serve",
+    "build": "zotero-plugin build",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mapispev/zotero-instant-cite.git"
+  },
+  "dependencies": {
+    "@swc/core": "^1.15.18",
+    "@swc/core-win32-x64-msvc": "^1.15.21",
+    "zotero-plugin-toolkit": "^5.1.2"
+  },
+  "devDependencies": {
+    "jsdom": "^28.1.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0",
+    "zotero-plugin-scaffold": "^0.8.3",
+    "zotero-types": "^4.1.2"
+  }
+}

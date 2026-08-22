@@ -1,0 +1,12 @@
+node_modules/
+.scaffold/
+build/
+*.xpi
+update.json
+.DS_Store
+.claude/
+CLAUDE.md
+.env
+.syncthing.*
+**/.syncthing.*
+docs/superpowers/

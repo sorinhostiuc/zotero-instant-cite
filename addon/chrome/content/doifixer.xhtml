@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8" />
+  <title>Instant Cite - Fix DOIs</title>
+  <link rel="stylesheet" href="chrome://instantcite/content/instantcite.css" />
+  <link rel="stylesheet" href="chrome://instantcite/content/doifixer.css" />
+</head>
+<body>
+  <div class="dialog">
+    <div class="dialog-header">
+      <div class="dialog-title">Instant Cite - Fix DOIs</div>
+      <button class="close-btn" id="doifix-close">&#215;</button>
+    </div>
+
+    <div class="doifix-status" id="doifix-status">Scanning library&#8230;</div>
+
+    <div class="doifix-progress">
+      <div class="doifix-progress-bar" id="doifix-progress-bar"></div>
+    </div>
+
+    <div class="doifix-list" id="doifix-list"></div>
+
+    <div class="doifix-footer">
+      <div class="doifix-summary" id="doifix-summary"></div>
+      <div class="doifix-actions">
+        <button class="doifix-btn" id="doifix-select-all">Select all</button>
+        <button class="doifix-btn" id="doifix-select-none">Select none</button>
+        <button class="doifix-btn doifix-btn-primary" id="doifix-apply" disabled="disabled">Apply</button>
+        <button class="doifix-btn" id="doifix-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

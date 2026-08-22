@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8" />
+  <title>Zotero Instant Cite</title>
+  <link rel="stylesheet" href="chrome://instantcite/content/instantcite.css" />
+</head>
+<body>
+  <div class="dialog">
+    <div class="dialog-header">
+      <div class="dialog-title">Zotero Instant Cite</div>
+      <button class="close-btn" id="close-btn">&#215;</button>
+    </div>
+
+    <div class="dialog-body">
+      <div class="search-section">
+        <div class="search-box">
+          <input
+            type="text"
+            class="search-input"
+            id="search-input"
+            placeholder="Enter title, author, DOI, or PMID..."
+          />
+          <button class="search-btn" id="search-btn">Search</button>
+        </div>
+
+        <div class="source-tabs">
+          <div class="tab active" data-source="all">
+            All <span class="badge">0</span>
+          </div>
+          <div class="tab" data-source="Zotero">
+            My Library <span class="badge">0</span>
+          </div>
+          <div class="tab" data-source="PubMed">
+            PubMed <span class="badge">0</span>
+          </div>
+          <div class="tab" data-source="EuropePMC">
+            Europe PMC <span class="badge">0</span>
+          </div>
+          <div class="tab" data-source="CrossRef">
+            CrossRef <span class="badge">0</span>
+          </div>
+          <div class="tab" data-source="DOAJ">
+            DOAJ <span class="badge">0</span>
+          </div>
+          <div class="tab" data-source="OpenLibrary">
+            Open Library <span class="badge">0</span>
+          </div>
+          <div class="tab" data-source="GoogleBooks">
+            Google Books <span class="badge">0</span>
+          </div>
+          <div class="tab" data-source="LoC">
+            LoC <span class="badge">0</span>
+          </div>
+          <div class="tab-separator"></div>
+          <div class="tab" data-source="ECHR">
+            ECHR <span class="badge">0</span>
+          </div>
+          <div class="tab" data-source="EUR-Lex">
+            EUR-Lex <span class="badge">0</span>
+          </div>
+          <div class="tab" data-source="CourtListener">
+            CourtListener <span class="badge">0</span>
+          </div>
+        </div>
+
+        <div class="filters">
+          <div class="filter-group">
+            <span class="filter-label">Sources:</span>
+          </div>
+          <div class="filter-group checkbox-wrapper">
+            <input type="checkbox" id="src-zotero" checked="checked" data-source="Zotero" class="source-checkbox" />
+            <label for="src-zotero" class="filter-label">My Library</label>
+          </div>
+          <div class="filter-group checkbox-wrapper">
+            <input type="checkbox" id="src-pubmed" checked="checked" data-source="PubMed" class="source-checkbox" />
+            <label for="src-pubmed" class="filter-label">PubMed</label>
+          </div>
+          <div class="filter-group checkbox-wrapper">
+            <input type="checkbox" id="src-europepmc" checked="checked" data-source="EuropePMC" class="source-checkbox" />
+            <label for="src-europepmc" class="filter-label">Europe PMC</label>
+          </div>
+          <div class="filter-group checkbox-wrapper">
+            <input type="checkbox" id="src-crossref" checked="checked" data-source="CrossRef" class="source-checkbox" />
+            <label for="src-crossref" class="filter-label">CrossRef</label>
+          </div>
+          <div class="filter-group checkbox-wrapper">
+            <input type="checkbox" id="src-doaj" checked="checked" data-source="DOAJ" class="source-checkbox" />
+            <label for="src-doaj" class="filter-label">DOAJ</label>
+          </div>
+          <div class="filter-group checkbox-wrapper">
+            <input type="checkbox" id="src-openlib" checked="checked" data-source="OpenLibrary" class="source-checkbox" />
+            <label for="src-openlib" class="filter-label">Open Library</label>
+          </div>
+          <div class="filter-group checkbox-wrapper">
+            <input type="checkbox" id="src-googlebooks" checked="checked" data-source="GoogleBooks" class="source-checkbox" />
+            <label for="src-googlebooks" class="filter-label">Google Books</label>
+          </div>
+          <div class="filter-group checkbox-wrapper">
+            <input type="checkbox" id="src-loc" checked="checked" data-source="LoC" class="source-checkbox" />
+            <label for="src-loc" class="filter-label">Library of Congress</label>
+          </div>
+          <div class="filter-separator"></div>
+          <div class="filter-group checkbox-wrapper">
+            <input type="checkbox" id="src-echr" checked="checked" data-source="ECHR" class="source-checkbox" />
+            <label for="src-echr" class="filter-label">ECHR</label>
+          </div>
+          <div class="filter-group checkbox-wrapper">
+            <input type="checkbox" id="src-eurlex" checked="checked" data-source="EUR-Lex" class="source-checkbox" />
+            <label for="src-eurlex" class="filter-label">EUR-Lex</label>
+          </div>
+          <div class="filter-group checkbox-wrapper">
+            <input type="checkbox" id="src-courtlistener" checked="checked" data-source="CourtListener" class="source-checkbox" />
+            <label for="src-courtlistener" class="filter-label">CourtListener</label>
+          </div>
+          <div class="filter-separator"></div>
+          <div class="filter-group checkbox-wrapper">
+            <input type="checkbox" id="oa-filter" />
+            <label for="oa-filter" class="filter-label">Open Access only</label>
+          </div>
+        </div>
+
+        <div class="year-filters">
+          <span class="filter-label">Any time</span>
+          <button class="year-btn" data-year="2025">Since 2025</button>
+          <button class="year-btn" data-year="2024">Since 2024</button>
+          <button class="year-btn" data-year="2023">Since 2023</button>
+          <button class="year-btn" data-year="2020">Since 2020</button>
+          <button class="year-btn" data-year="2015">Since 2015</button>
+          <button class="year-btn" data-year="2010">Since 2010</button>
+          <div class="year-custom">
+            <input type="number" id="year-from" class="year-input" placeholder="From" min="1900" />
+            <span class="filter-label">&#8211;</span>
+            <input type="number" id="year-to" class="year-input" placeholder="To" min="1900" />
+          </div>
+        </div>
+
+        <div class="results-header">
+          <div class="results-count" id="results-count">
+            Search to see results
+          </div>
+          <div class="sort-group">
+            <span class="filter-label">Sort by:</span>
+            <button class="sort-btn active" data-sort="relevance">Relevance</button>
+            <button class="sort-btn" data-sort="citations">Citations</button>
+            <button class="sort-btn" data-sort="date">Date</button>
+            <button class="sort-dir-btn" id="sort-dir-btn" data-dir="desc" title="Descending">&#9660;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="results-container" id="results-container">
+        <div class="empty-state">
+          <div class="empty-icon">&#128269;</div>
+          <div>Enter a search query to find papers</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Citation details panel (integration mode only) -->
+    <div class="citation-details-panel" id="citation-details-panel" style="display:none;">
+      <div class="citation-details-header">
+        <span class="citation-details-title">Citation Details</span>
+        <span class="citation-details-hint">Set page numbers, prefix/suffix for each reference</span>
+      </div>
+      <div class="citation-details-list" id="citation-details-list"></div>
+    </div>
+
+    <div class="dialog-footer">
+      <div class="footer-left">
+        <button class="footer-btn settings-btn" id="settings-btn" title="Settings">&#9881;</button>
+        <button class="footer-btn" id="cancel-btn">Cancel</button>
+        <span class="selection-count" id="selection-count">0 selected</span>
+        <button class="footer-btn" id="merge-btn" style="display:none;" title="Merge selected Zotero items into one">Merge</button>
+      </div>
+      <div class="footer-right">
+        <button class="footer-btn" id="add-library-btn">Add to Library</button>
+        <button class="footer-btn primary" id="add-cite-btn">Add &amp; Cite Selected</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

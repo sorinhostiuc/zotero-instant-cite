@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE PubmedArticleSet PUBLIC "-//NLM//DTD PubMedArticle, 1st January 2024//EN" "https://dtd.nlm.nih.gov/ncbi/pubmed/out/pubmed_240101.dtd">
+<PubmedArticleSet>
+  <PubmedArticle>
+    <MedlineCitation Status="MEDLINE" Owner="NLM">
+      <PMID Version="1">36789012</PMID>
+      <Article PubModel="Print-Electronic">
+        <Journal>
+          <ISSN IssnType="Electronic">1474-4465</ISSN>
+          <JournalIssue CitedMedium="Internet">
+            <Volume>22</Volume>
+            <Issue>4</Issue>
+            <PubDate>
+              <Year>2023</Year>
+              <Month>Apr</Month>
+            </PubDate>
+          </JournalIssue>
+          <Title>The Lancet Neurology</Title>
+          <ISOAbbreviation>Lancet Neurol</ISOAbbreviation>
+        </Journal>
+        <ArticleTitle>Traumatic brain injury: progress and challenges in prevention, clinical care, and research</ArticleTitle>
+        <AuthorList CompleteYN="Y">
+          <Author ValidYN="Y">
+            <LastName>Maas</LastName>
+            <ForeName>Andrew I R</ForeName>
+            <Initials>AIR</Initials>
+            <AffiliationInfo>
+              <Affiliation>Department of Neurosurgery, Antwerp University Hospital, Edegem, Belgium</Affiliation>
+            </AffiliationInfo>
+          </Author>
+          <Author ValidYN="Y">
+            <LastName>Menon</LastName>
+            <ForeName>David K</ForeName>
+            <Initials>DK</Initials>
+            <AffiliationInfo>
+              <Affiliation>Division of Anaesthesia, University of Cambridge, Cambridge, UK</Affiliation>
+            </AffiliationInfo>
+          </Author>
+        </AuthorList>
+        <Abstract>
+          <AbstractText Label="BACKGROUND">Traumatic brain injury (TBI) remains a major cause of death and disability worldwide. Despite decades of research, effective pharmacological treatments are still lacking.</AbstractText>
+          <AbstractText Label="METHODS">We conducted a comprehensive review of recent advances in TBI prevention, clinical care, and research methodology.</AbstractText>
+        </Abstract>
+      </Article>
+    </MedlineCitation>
+    <PubmedData>
+      <ArticleIdList>
+        <ArticleId IdType="pubmed">36789012</ArticleId>
+        <ArticleId IdType="doi">10.1016/S1474-4422(23)00123-4</ArticleId>
+      </ArticleIdList>
+    </PubmedData>
+  </PubmedArticle>
+  <PubmedArticle>
+    <MedlineCitation Status="MEDLINE" Owner="NLM">
+      <PMID Version="1">35678901</PMID>
+      <Article PubModel="Print">
+        <Journal>
+          <ISSN IssnType="Print">0028-3878</ISSN>
+          <JournalIssue CitedMedium="Print">
+            <Volume>100</Volume>
+            <Issue>12</Issue>
+            <PubDate>
+              <Year>2023</Year>
+              <Month>Mar</Month>
+            </PubDate>
+          </JournalIssue>
+          <Title>Neurology</Title>
+          <ISOAbbreviation>Neurology</ISOAbbreviation>
+        </Journal>
+        <ArticleTitle>Biomarkers for mild traumatic brain injury: a systematic review</ArticleTitle>
+        <AuthorList CompleteYN="Y">
+          <Author ValidYN="Y">
+            <LastName>Bazarian</LastName>
+            <ForeName>Jeffrey J</ForeName>
+            <Initials>JJ</Initials>
+          </Author>
+        </AuthorList>
+        <Abstract>
+          <AbstractText>Blood-based biomarkers for mild traumatic brain injury have shown promise in recent years. This systematic review evaluates the diagnostic accuracy of serum biomarkers including GFAP, UCH-L1, and S100B for detecting intracranial lesions after mild TBI.</AbstractText>
+        </Abstract>
+      </Article>
+    </MedlineCitation>
+    <PubmedData>
+      <ArticleIdList>
+        <ArticleId IdType="pubmed">35678901</ArticleId>
+      </ArticleIdList>
+    </PubmedData>
+  </PubmedArticle>
+</PubmedArticleSet>

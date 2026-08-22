@@ -1,0 +1,114 @@
+{
+  "meta": {
+    "count": 1542,
+    "db_response_time_ms": 45,
+    "page": 1,
+    "per_page": 2
+  },
+  "results": [
+    {
+      "id": "https://openalex.org/W4321098765",
+      "doi": "https://doi.org/10.1016/j.neuroimage.2023.119876",
+      "title": "Neural correlates of cognitive recovery after traumatic brain injury",
+      "publication_year": 2023,
+      "cited_by_count": 42,
+      "authorships": [
+        {
+          "author": {
+            "id": "https://openalex.org/A1234567890",
+            "display_name": "Sarah Johnson",
+            "orcid": "https://orcid.org/0000-0001-2345-6789"
+          },
+          "institutions": [
+            {
+              "id": "https://openalex.org/I123456",
+              "display_name": "Harvard Medical School"
+            }
+          ]
+        },
+        {
+          "author": {
+            "id": "https://openalex.org/A9876543210",
+            "display_name": "Michael Chen",
+            "orcid": null
+          },
+          "institutions": [
+            {
+              "id": "https://openalex.org/I789012",
+              "display_name": "MIT"
+            }
+          ]
+        }
+      ],
+      "primary_location": {
+        "source": {
+          "id": "https://openalex.org/S12345",
+          "display_name": "NeuroImage"
+        }
+      },
+      "open_access": {
+        "is_oa": true,
+        "oa_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC12345678/pdf/"
+      },
+      "abstract_inverted_index": {
+        "Traumatic": [0],
+        "brain": [1],
+        "injury": [2],
+        "often": [3],
+        "results": [4],
+        "in": [5, 12],
+        "cognitive": [6],
+        "deficits.": [7],
+        "This": [8],
+        "study": [9],
+        "examines": [10],
+        "recovery": [11],
+        "a": [13],
+        "longitudinal": [14],
+        "cohort.": [15]
+      }
+    },
+    {
+      "id": "https://openalex.org/W9876543210",
+      "doi": "https://doi.org/10.1001/jamaneurol.2023.5678",
+      "title": "Long-term outcomes of severe traumatic brain injury: a 10-year follow-up study",
+      "publication_year": 2023,
+      "cited_by_count": 15,
+      "authorships": [
+        {
+          "author": {
+            "id": "https://openalex.org/A5555555555",
+            "display_name": "Elena Rodriguez",
+            "orcid": "https://orcid.org/0000-0002-3456-7890"
+          },
+          "institutions": [
+            {
+              "id": "https://openalex.org/I654321",
+              "display_name": "University of Barcelona"
+            }
+          ]
+        }
+      ],
+      "primary_location": {
+        "source": {
+          "id": "https://openalex.org/S67890",
+          "display_name": "JAMA Neurology"
+        }
+      },
+      "open_access": {
+        "is_oa": false,
+        "oa_url": null
+      },
+      "abstract_inverted_index": {
+        "Long-term": [0],
+        "outcomes": [1],
+        "after": [2],
+        "severe": [3],
+        "TBI": [4],
+        "remain": [5],
+        "poorly": [6],
+        "understood.": [7]
+      }
+    }
+  ]
+}
