@@ -21,8 +21,10 @@
   },
   "dependencies": {
     "@swc/core": "^1.15.18",
-    "@swc/core-win32-x64-msvc": "^1.15.21",
     "zotero-plugin-toolkit": "^5.1.2"
+  },
+  "optionalDependencies": {
+    "@swc/core-win32-x64-msvc": "^1.15.21"
   },
   "devDependencies": {
     "jsdom": "^28.1.0",
