@@ -1,23 +1,52 @@
-# Zotero Instant Cite
+# Instant Cite
 
-Zotero Instant Cite searches scholarly and library catalogues from inside Zotero. A result can be added to the library or inserted into the active Word or LibreOffice document without opening a browser.
+Instant Cite joins bibliographic search, reference management, and citation in one Zotero workflow for Microsoft Word and LibreOffice.
+
+![Instant Cite search results](docs/images/01-instant-cite-search-clear.png)
 
 ## What it does
 
-The search window accepts titles, authors, DOI values, PMID values, ISBN values, and supported legal identifiers. Results from several sources are merged with records already held in Zotero. The plugin detects duplicates, can repair DOI metadata, and gives Zotero items priority when the same work appears more than once.
+- Searches by title, author, keyword, DOI, or PMID.
+- Queries your Zotero library and the academic, bibliographic, or legal sources you enable.
+- Orders results by relevance and checks them against items already in your library.
+- Shows authors, publication, year, DOI, and abstract before you cite.
+- Can locate an open-access PDF when one is available.
+- Inserts citations in Word or LibreOffice and keeps the bibliography linked to Zotero.
 
-`Add to Library` saves the selected records. `Add & Cite Selected` also sends them to the active word-processor integration. Menu commands are available under `Tools`, with English and Romanian interface text.
+## Workflow
+
+Choose the sources and search options in Zotero.
+
+![Instant Cite settings](docs/images/03-instant-cite-settings.png)
+
+Select a result from Word or LibreOffice. Instant Cite adds the item to Zotero when needed, then hands it to Zotero's citation dialog.
+
+![Selecting a result in Word](docs/images/02-word-results-selection.png)
+
+![Selecting a result in LibreOffice](docs/images/04-libreoffice-selection.png)
+
+The inserted citation and bibliography remain editable through Zotero.
+
+![Citation and bibliography](docs/images/05-citation-and-bibliography.png)
 
 ## Installation
 
-Download `zotero-instant-cite-0.6.11.xpi` from the latest release. In Zotero, open `Tools > Plugins`, select `Install Add-on From File`, and choose the XPI.
+1. Download the latest `.xpi` from [Releases](https://github.com/sorinhostiuc/zotero-instant-cite/releases/latest).
+2. In Zotero, open **Tools > Plugins**.
+3. Choose **Install Plugin From File**, select the `.xpi`, and restart Zotero if asked.
 
-The current release supports Zotero 7, 8, and 9.
+Instant Cite supports Zotero 7 through 9 on Windows, macOS, and Linux. Word and LibreOffice integration requires Zotero's corresponding word-processor plugin.
 
 ## Development
 
-Install Node.js, clone the repository, and run `npm ci`. Use `npm test` for the Vitest suite and `npm run build` to create the XPI. The test suite covers query detection, result ranking, duplicate handling, DOI repair, Zotero integration, and the Word and LibreOffice shortcuts.
+Install the dependencies and run the checks described in `package.json`. Build the release package with:
+
+```bash
+npm ci
+npm test
+npm run build
+```
 
 ## License
 
-Zotero Instant Cite is released under the MIT License. See [LICENSE](LICENSE).
+[MIT](LICENSE)
