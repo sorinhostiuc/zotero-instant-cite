@@ -1,6 +1,6 @@
 {
   "name": "zotero-instant-cite",
-  "version": "0.6.11",
+  "version": "0.6.12",
   "description": "Search + Add + Cite academic papers without leaving your workflow",
   "config": {
     "addonName": "Zotero Instant Cite",
@@ -17,7 +17,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mapispev/zotero-instant-cite.git"
+    "url": "https://github.com/sorinhostiuc/zotero-instant-cite.git"
   },
   "dependencies": {
     "@swc/core": "^1.15.18",
