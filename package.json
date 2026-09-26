@@ -1,6 +1,6 @@
 {
   "name": "zotero-instant-cite",
-  "version": "0.6.12",
+  "version": "0.6.13",
   "description": "Search + Add + Cite academic papers without leaving your workflow",
   "config": {
     "addonName": "Zotero Instant Cite",
