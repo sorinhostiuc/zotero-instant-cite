@@ -45,7 +45,8 @@ describe("dialog-window-manager", () => {
     expect(first).toBe(dialogWin);
     expect(second).toBe(dialogWin);
     expect(mainWin.openDialog).toHaveBeenCalledTimes(1);
-    expect(dialogWin.focus).toHaveBeenCalledTimes(1);
+    // Once when the window is raised to the foreground on load, once on reuse.
+    expect(dialogWin.focus).toHaveBeenCalledTimes(2);
     expect(onLoad).toHaveBeenCalledTimes(1);
     expect(getPersistentDialogWindow()).toBe(dialogWin);
   });
@@ -87,9 +88,13 @@ describe("dialog-window-manager", () => {
     mainWin.openDialog.mockReturnValue(newWin);
 
     const fresh = openFreshDialogWindow(mainWin as any, vi.fn());
+    newWin.dispatch("load");
 
     expect(fresh).toBe(newWin);
     expect(oldWin.close).toHaveBeenCalledTimes(1);
+    // The fresh citation dialog must be raised to the foreground on load,
+    // otherwise it opens behind Word/LibreOffice.
+    expect(newWin.focus).toHaveBeenCalledTimes(1);
     expect(getPersistentDialogWindow()).toBe(newWin);
   });
 

@@ -28,6 +28,25 @@ export function clearPersistentDialogWindow(win?: Window) {
   }
 }
 
+/**
+ * Open a new dialog window, cache it, and wire up its lifecycle. The window is
+ * raised to the foreground once it loads — a window opened while another app
+ * (Word/LibreOffice) is frontmost otherwise loads *behind* it.
+ */
+function createDialogWindow(
+  mainWindow: Window & { openDialog: (...args: any[]) => Window },
+  onLoad: (win: Window) => void,
+): DialogWindow {
+  const win = mainWindow.openDialog(DIALOG_URL, DIALOG_NAME, getDialogFeatures()) as DialogWindow;
+  persistentDialogWindow = win;
+  win.addEventListener("load", () => {
+    try { win.focus(); } catch { /* ignore */ }
+    onLoad(win);
+  }, { once: true } as any);
+  win.addEventListener("unload", () => clearPersistentDialogWindow(win), { once: true } as any);
+  return win;
+}
+
 export function openOrReuseDialogWindow(
   mainWindow: Window & { openDialog: (...args: any[]) => Window },
   onLoad: (win: Window) => void,
@@ -38,11 +57,7 @@ export function openOrReuseDialogWindow(
     return existing;
   }
 
-  const win = mainWindow.openDialog(DIALOG_URL, DIALOG_NAME, getDialogFeatures()) as DialogWindow;
-  persistentDialogWindow = win;
-  win.addEventListener("load", () => onLoad(win), { once: true } as any);
-  win.addEventListener("unload", () => clearPersistentDialogWindow(win), { once: true } as any);
-  return win;
+  return createDialogWindow(mainWindow, onLoad);
 }
 
 export function openFreshDialogWindow(
@@ -55,11 +70,7 @@ export function openFreshDialogWindow(
     try { existing.close(); } catch { /* ignore */ }
   }
 
-  const win = mainWindow.openDialog(DIALOG_URL, DIALOG_NAME, getDialogFeatures()) as DialogWindow;
-  persistentDialogWindow = win;
-  win.addEventListener("load", () => onLoad(win), { once: true } as any);
-  win.addEventListener("unload", () => clearPersistentDialogWindow(win), { once: true } as any);
-  return win;
+  return createDialogWindow(mainWindow, onLoad);
 }
 
 export function sendDialogToBackground(win: Window) {
