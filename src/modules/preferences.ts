@@ -287,9 +287,9 @@ export const ALL_SOURCE_NAMES = [
   { id: "CrossRef", label: "CrossRef" },
   { id: "DOAJ", label: "DOAJ" },
   { id: "OpenLibrary", label: "Open Library" },
-  { id: "GoogleBooks", label: "Google Books" },
   { id: "LoC", label: "Library of Congress" },
   { id: "ECHR", label: "ECHR (Case Law)" },
   { id: "EUR-Lex", label: "EUR-Lex (Legislation)" },
+  { id: "RO-Lex", label: "RO-Lex (Legislație RO)" },
   { id: "CourtListener", label: "CourtListener (US Case Law)" },
 ];

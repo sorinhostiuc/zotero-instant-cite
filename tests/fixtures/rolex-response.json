@@ -1,0 +1,77 @@
+{
+  "total": 133,
+  "hits": [
+    {
+      "source": "ro",
+      "source_id": "2020-regulament-organizare-functionare-14",
+      "doc_type": "REGULAMENT",
+      "title": "Regulamentul din 22.10.2020 de organizare și funcționare a comisiei de malpraxis a Colegiului Fizioterapeuților din România",
+      "official_reference": "MONITORUL OFICIAL nr. 1061 din 11 noiembrie 2020",
+      "status": "in_vigoare",
+      "date_published": "2020-10-22",
+      "snippet": "<b>malpraxis</b>, denumită în continuare comisie",
+      "url_source": "/legislatie/2020-regulament-organizare-functionare-14",
+      "title_lang": null,
+      "match_kind": null,
+      "available": true
+    },
+    {
+      "source": "ro",
+      "source_id": "mo-PI-2020-1061-4",
+      "doc_type": "HG",
+      "title": "HOTĂRÂRE nr. 94/2020 – pentru aprobarea Regulamentului de organizare și funcționare a comisiei de malpraxis a Colegiului Fizioterapeuților din România",
+      "official_reference": "Monitorul Oficial al României, Partea I, nr. 1061/2020",
+      "status": "in_vigoare",
+      "date_published": null,
+      "snippet": "<b>malpraxis</b>\na Colegiului Fizioterapeuților din România",
+      "url_source": "/document/ro/mo-PI-2020-1061-4",
+      "title_lang": null,
+      "match_kind": null,
+      "available": true
+    },
+    {
+      "source": "ro",
+      "source_id": "mo-PI-2020-348-1",
+      "doc_type": "ORDIN",
+      "title": "al ministrului sănătății pentru completarea Regulamentului de organizare și funcționare a comisiei de monitorizare și competență profesională pentru cazurile de malpraxis, aprobat prin Ordinul ministrului sănătății publice nr. 1.343/2006",
+      "official_reference": "Monitorul Oficial al României, Partea I, nr. 348/2020",
+      "status": "in_vigoare",
+      "date_published": null,
+      "snippet": "<b>malpraxis</b>,\naprobat prin Ordinul ministrului",
+      "url_source": "/document/ro/mo-PI-2020-348-1",
+      "title_lang": null,
+      "match_kind": null,
+      "available": true
+    },
+    {
+      "source": "ro",
+      "source_id": "mo-PI-2024-509-1",
+      "doc_type": "DECIZIE_CCR",
+      "title": "Decizia 43 din 30 ianuarie 2024 referitoare la excepția de neconstituționalitate a dispozițiilor art. 680 alin. (4) și ale art. 687 din Legea nr. 95/2006 privind reforma în domeniul sănătății",
+      "official_reference": "Monitorul Oficial al României, Partea I, nr. 509/2024",
+      "status": "in_vigoare",
+      "date_published": null,
+      "snippet": "<b>malpraxis</b> din cadrul Direcției de Sănătate",
+      "url_source": "/document/ro/mo-PI-2024-509-1",
+      "title_lang": null,
+      "match_kind": null,
+      "available": true
+    },
+    {
+      "source": "ro",
+      "source_id": "mo-PI-2022-1084-0",
+      "doc_type": "OUG",
+      "title": "ORDONANȚĂ DE URGENȚĂ nr. 150/2022 – pentru modificarea și completarea Legii nr. 95/2006 privind reforma în domeniul sănătății și a Legii nr. 151/2010 privind serviciile specializate integrate de sănătate, educație și sociale adresate persoanelor cu tulburări din spectrul autist și cu tulburări de sănătate mintală asociate, precum și pentru stabilirea unor măsuri în domeniul sănătății",
+      "official_reference": "Monitorul Oficial al României, Partea I, nr. 1084/2022",
+      "status": "in_vigoare",
+      "date_published": null,
+      "snippet": "2 MONITORUL OFICIAL AL ROMÂNIEI",
+      "url_source": "/document/ro/mo-PI-2022-1084-0",
+      "title_lang": null,
+      "match_kind": null,
+      "available": true
+    }
+  ],
+  "errors": {},
+  "recognized_reference": false
+}
