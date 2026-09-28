@@ -27,16 +27,46 @@ async function citeAndUpdateDocument(session: any, field: any) {
 }
 
 /** Set of Zotero item IDs cited in the current Word document */
-export let documentItemIds: Set<number> = new Set();
+let documentItemIds: Set<number> = new Set();
+
+/**
+ * Live accessor for the cited-item set. Consumers in other modules must call
+ * this rather than importing `documentItemIds` directly: the set is
+ * *reassigned* by resetDocumentItemIds, and a captured import binding can go
+ * stale depending on how the bundler emits cross-module live bindings.
+ */
+export function getDocumentItemIds(): Set<number> {
+  return documentItemIds;
+}
 
 export function resetDocumentItemIds(seed?: Set<number>) {
   documentItemIds = new Set(seed ?? []);
+}
+
+/** Merge item IDs into the current document set without discarding what's there. */
+export function addDocumentItemIds(ids: Iterable<number>) {
+  for (const id of ids) documentItemIds.add(id);
 }
 
 export async function loadDocumentItemIdsFromCitationIO(
   io: any,
   options: { waitForFullScan?: boolean } = {},
 ): Promise<Set<number>> {
+  // Synchronous source first: some Zotero builds expose the fully-scanned
+  // citation map directly on the IO (or its session) without a promise. Reading
+  // it here keeps document priority working when the internal promise field
+  // below is absent or renamed — which it is across Zotero versions.
+  const syncMap = io?.citationsByItemID ?? io?.session?.citationsByItemID;
+  if (syncMap) {
+    const syncIds = extractDocumentItemIds(syncMap);
+    if (syncIds.size > 0) {
+      resetDocumentItemIds(syncIds);
+      if (typeof Zotero !== "undefined") {
+        Zotero.log("[InstantCite] Document has " + documentItemIds.size + " cited items (sync)");
+      }
+    }
+  }
+
   const promise = io?._citationsByItemIDPromise ??
     io?.allCitedDataLoadedPromise?.then((result: unknown) => Array.isArray(result) ? result[1] : null);
   if (!promise || typeof promise.then !== "function" || options.waitForFullScan === false) {
@@ -46,7 +76,8 @@ export async function loadDocumentItemIdsFromCitationIO(
   try {
     const citationsByItemID = await promise;
     const ids = extractDocumentItemIds(citationsByItemID);
-    resetDocumentItemIds(ids);
+    // Don't clobber a good synchronous result with an empty async one.
+    if (ids.size > 0) resetDocumentItemIds(ids);
     if (typeof Zotero !== "undefined") {
       Zotero.log("[InstantCite] Document has " + documentItemIds.size + " cited items");
     }
@@ -80,7 +111,12 @@ export function patchCitationDialog() {
     if (windowType === "citation" && isInterceptCitations()) {
       Zotero.log("[InstantCite] Intercepting citation dialog, mode=" + mode);
       try {
-        resetDocumentItemIds(extractCitationItemIds(io?.citation?.citationItems));
+        // Merge the items of the citation being inserted/edited into the set.
+        // Do NOT reset here: the Add Citation command (patchAddCitationAutoEdit)
+        // has already loaded the *whole* document's cited items, and
+        // io.citation.citationItems is only the single citation being touched —
+        // resetting would throw away everything already cited elsewhere.
+        addDocumentItemIds(extractCitationItemIds(io?.citation?.citationItems));
         return await showInstantCiteForCitation(io);
       } catch (err) {
         Zotero.log("[InstantCite] Error in citation intercept: " + err);
@@ -139,6 +175,19 @@ function patchAddCitationAutoEdit() {
 
         await this._session.init(false, false);
 
+        // Load the full set of items already cited in this document from the
+        // session. This is authoritative and available synchronously, and it
+        // runs for BOTH a brand-new citation and an edit — previously it only
+        // ran on the edit branch, so a new citation opened with an empty
+        // document tier and already-cited references were never ranked first.
+        try {
+          const citsByItem = this._session.citationsByItemID;
+          if (citsByItem) {
+            resetDocumentItemIds(extractDocumentItemIds(citsByItem));
+            Zotero.log("[InstantCite] Document has " + documentItemIds.size + " cited items");
+          }
+        } catch { /* ignore — session API may vary */ }
+
         let docField = null;
         try {
           docField = await this._doc.cursorInField(this._session.data.prefs['fieldType']);
@@ -153,13 +202,6 @@ function patchAddCitationAutoEdit() {
         // to original addCitation here, because that can add/replace instead of
         // editing the selected citation.
         Zotero.log("[InstantCite] Cursor in existing field, auto-editing instead of replacing");
-        try {
-          const citsByItem = this._session.citationsByItemID;
-          if (citsByItem) {
-            resetDocumentItemIds(extractDocumentItemIds(citsByItem));
-            Zotero.log("[InstantCite] Document has " + documentItemIds.size + " cited items");
-          }
-        } catch { /* ignore — session API may vary */ }
         return citeAndUpdateDocument(this._session, docField);
       } finally {
         addCitationInProgress = false;

@@ -11,6 +11,8 @@ vi.mock("../src/modules/preferences", () => ({
 
 import { prepareSearchDialogForPendingCitation } from "../src/modules/search-dialog";
 import {
+  addDocumentItemIds,
+  getDocumentItemIds,
   loadDocumentItemIdsFromCitationIO,
   patchCitationDialog,
   resetDocumentItemIds,
@@ -46,6 +48,34 @@ describe("integration patch document citation loading", () => {
     });
 
     expect([...ids]).toEqual([99, 100]);
+  });
+
+  it("reads a synchronous citation map when no promise is exposed", async () => {
+    resetDocumentItemIds(new Set());
+
+    const ids = await loadDocumentItemIdsFromCitationIO(
+      { citationsByItemID: { "12": [{}], "15": [{}] } },
+      { waitForFullScan: true },
+    );
+
+    expect([...ids].sort((a, b) => a - b)).toEqual([12, 15]);
+  });
+
+  it("does not clobber a good synchronous scan with an empty async result", async () => {
+    resetDocumentItemIds(new Set());
+
+    const ids = await loadDocumentItemIdsFromCitationIO({
+      citationsByItemID: { "3": [{}], "4": [{}] },
+      _citationsByItemIDPromise: Promise.resolve({}),
+    });
+
+    expect([...ids].sort((a, b) => a - b)).toEqual([3, 4]);
+  });
+
+  it("merges item IDs without discarding the existing set", () => {
+    resetDocumentItemIds(new Set([1, 2]));
+    addDocumentItemIds(new Set([2, 3]));
+    expect([...getDocumentItemIds()].sort((a, b) => a - b)).toEqual([1, 2, 3]);
   });
 });
 
@@ -134,6 +164,31 @@ describe("integration patch addCitation fast path", () => {
     expect(session.cite).toHaveBeenCalledWith(null);
     expect(session.updateDocument).toHaveBeenCalledTimes(1);
     expect(originalAddCitation).not.toHaveBeenCalled();
+  });
+
+  it("loads the whole document's cited items for a new citation", async () => {
+    resetDocumentItemIds(new Set());
+    const { Interface } = installFakeZotero(vi.fn(async function () {}));
+    patchCitationDialog();
+
+    const session = {
+      data: { prefs: { fieldType: "Field", delayCitationUpdates: false } },
+      init: vi.fn(async function () {}),
+      // Authoritative full-document map, available synchronously after init.
+      citationsByItemID: { "42": [{}], "43": [{}] },
+      style: {},
+      cite: vi.fn(async () => [{ field: {}, fieldIndex: 0 }]),
+      updateDocument: vi.fn(),
+    };
+    const doc = {
+      // No existing field under the cursor → this is a brand-new citation.
+      cursorInField: vi.fn(async () => null),
+    };
+
+    await Interface.prototype.addCitation.call({ _doc: doc, _session: session });
+
+    expect([...getDocumentItemIds()].sort((a, b) => a - b)).toEqual([42, 43]);
+    expect(session.cite).toHaveBeenCalledWith(null);
   });
 
   it("falls back to Zotero's original addCitation when the session is not ready", async () => {

@@ -12,7 +12,7 @@ import {
 } from "./preferences";
 import { findAndMergeUpdates, applyAutoUpdates, showPreviewModal } from "./auto-updater";
 import { openMergeDialog } from "./dedup-dialog";
-import { documentItemIds, loadDocumentItemIdsFromCitationIO } from "./integration-patch";
+import { getDocumentItemIds, loadDocumentItemIdsFromCitationIO } from "./integration-patch";
 import {
   clearPersistentDialogWindow,
   getPersistentDialogWindow,
@@ -519,6 +519,9 @@ function scheduleDocumentItemIdsRefresh(win: Window, doc: Document, io: any) {
   documentItemIdsLoadTimer = setTimeout(() => {
     documentItemIdsLoadTimer = null;
     loadDocumentItemIdsFromCitationIO(io, { waitForFullScan: true }).then((ids) => {
+      // Nothing to re-rank if the dialog closed, the document has no citations,
+      // or no results are on screen yet — the next search reads the now-loaded
+      // set via getDocumentItemIds() anyway.
       if ((win as any).closed || ids.size === 0 || !currentResults) return;
       const searchInput = doc.getElementById("search-input") as HTMLInputElement | null;
       const query = searchInput?.value?.trim() ?? "";
@@ -526,9 +529,11 @@ function scheduleDocumentItemIdsRefresh(win: Window, doc: Document, io: any) {
         performLocalSearch(win);
         return;
       }
+      // Full results already on screen: re-render so the freshly-loaded
+      // document tier is re-asserted (applyFiltersAndRender re-sorts by provenance).
       renderCurrentResults(doc);
     });
-  }, 1500);
+  }, 400);
 }
 
 /** Load existing citation items when editing an existing citation in Word.
@@ -1549,7 +1554,7 @@ async function performLocalSearch(win: Window) {
   if (zoteroCheckbox && !zoteroCheckbox.checked) return;
 
   try {
-    const localResult = await searchZoteroLocal({ query, prioritizedItemIds: documentItemIds });
+    const localResult = await searchZoteroLocal({ query, prioritizedItemIds: getDocumentItemIds() });
     // Don't overwrite if a full search completed while we were searching
     if (isFullSearchDone) return;
 
@@ -1592,7 +1597,7 @@ async function performFullSearch(win: Window) {
 
   showLoading(doc);
 
-  const options: SearchOptions = { query, maxResults: getMaxResults(), prioritizedItemIds: documentItemIds };
+  const options: SearchOptions = { query, maxResults: getMaxResults(), prioritizedItemIds: getDocumentItemIds() };
 
   // Year filter: check active button first, then custom range
   const activeYearBtn = doc.querySelector(".year-btn.active") as HTMLElement;
@@ -1749,11 +1754,12 @@ function applyFiltersAndRender(doc: Document) {
 
   // Re-assert the tiers after filtering and after any manual sort: items cited
   // in the current document first, then the local library, then the internet.
-  filtered = sortByProvenance(filtered, documentItemIds);
+  const docItemIds = getDocumentItemIds();
+  filtered = sortByProvenance(filtered, docItemIds);
 
   const selectedIds = new Set(selectedPapers.keys());
   renderResults(doc, filtered, createSelectHandler(doc), onCardAction, selectedIds,
-    documentItemIds.size > 0 ? documentItemIds : undefined);
+    docItemIds.size > 0 ? docItemIds : undefined);
 }
 
 function renderCurrentResults(doc: Document) {
