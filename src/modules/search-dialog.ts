@@ -1614,7 +1614,10 @@ async function performFullSearch(win: Window) {
   for (const cb of sourceCheckboxes) {
     if (cb.checked) selectedSources.push(cb.dataset.source ?? "");
   }
-  if (selectedSources.length > 0 && selectedSources.length < 6) {
+  // Restrict to the checked sources whenever the user has deselected at least
+  // one. (Previously hard-coded to "< 6", so unchecking a source had no effect
+  // once six or more stayed checked.)
+  if (selectedSources.length > 0 && selectedSources.length < sourceCheckboxes.length) {
     options.sources = selectedSources;
   }
 
