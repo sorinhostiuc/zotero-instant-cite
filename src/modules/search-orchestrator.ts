@@ -7,8 +7,8 @@ import { searchECHR } from "./api/echr";
 import { searchEurLex } from "./api/eurlex";
 import { searchCourtListener } from "./api/courtlistener";
 import { searchZoteroLocal } from "./api/zotero-local";
-import { searchGoogleBooks } from "./api/google-books";
 import { searchLoC } from "./api/loc";
+import { searchRoLex } from "./api/ro-lex";
 import { detectQueryType } from "./utils/query-detector";
 import { deduplicateResults } from "./utils/deduplicator";
 import { rankResults, scoreRelevance } from "./utils/relevance";
@@ -17,14 +17,14 @@ import type { PaperResult, SearchOptions, SearchResponse } from "./api/types";
 
 const ALL_SOURCES = [
   "Zotero", "PubMed", "EuropePMC", "CrossRef", "DOAJ", "OpenLibrary",
-  "GoogleBooks", "LoC",
-  "ECHR", "EUR-Lex", "CourtListener",
+  "LoC",
+  "ECHR", "EUR-Lex", "RO-Lex", "CourtListener",
 ];
 
 const EXTERNAL_SOURCES = [
   "PubMed", "EuropePMC", "CrossRef", "DOAJ", "OpenLibrary",
-  "GoogleBooks", "LoC",
-  "ECHR", "EUR-Lex", "CourtListener",
+  "LoC",
+  "ECHR", "EUR-Lex", "RO-Lex", "CourtListener",
 ];
 
 /** Similarity threshold — if best local result scores above this, skip external search */
@@ -225,10 +225,10 @@ function buildSearches(
     CrossRef: () => searchCrossRef(options),
     DOAJ: () => searchDOAJ(options),
     OpenLibrary: () => searchOpenLibrary(options),
-    GoogleBooks: () => searchGoogleBooks(options),
     LoC: () => searchLoC(options),
     ECHR: () => searchECHR(options),
     "EUR-Lex": () => searchEurLex(options),
+    "RO-Lex": () => searchRoLex(options),
     CourtListener: () => searchCourtListener(options),
   };
 
