@@ -39,19 +39,32 @@ export function selectLocalSearchItemIds(
 }
 
 /**
- * Search the local Zotero library using Zotero.Search API.
- * Searches title, creator, DOI, and ISBN fields.
+ * Every library to search: the personal library plus every group library.
+ * A reference cited from a group library must still be recognised as "in your
+ * library" / "cited in the document", so searching only the personal library
+ * (as this used to) would silently drop those from both provenance tiers.
  */
-export async function searchZoteroLocal(options: {
-  query: string;
-  yearFrom?: number;
-  yearTo?: number;
-  prioritizedItemIds?: Set<number>;
-}): Promise<SearchResponse> {
-  const start = Date.now();
+export function getSearchableLibraryIDs(): number[] {
+  try {
+    const all = (Zotero.Libraries as any).getAll?.();
+    if (Array.isArray(all) && all.length > 0) {
+      const ids = all
+        // Personal + group libraries, but not RSS feeds — you don't cite those.
+        .filter((lib: any) => lib?.libraryType !== "feed")
+        .map((lib: any) => lib?.libraryID)
+        .filter((id: any): id is number => typeof id === "number");
+      if (ids.length > 0) return ids;
+    }
+  } catch { /* fall through to the personal library */ }
+  return [Zotero.Libraries.userLibraryID];
+}
 
+function buildLibrarySearch(
+  libraryID: number,
+  options: { query: string; yearFrom?: number; yearTo?: number },
+): any {
   const search = new Zotero.Search();
-  search.libraryID = Zotero.Libraries.userLibraryID;
+  search.libraryID = libraryID;
 
   // Keyword queries mimic the Zotero search bar; DOI/PMID queries are matched
   // against the field that actually holds them.
@@ -67,8 +80,37 @@ export async function searchZoteroLocal(options: {
   if (options.yearTo) {
     search.addCondition("date", "isBefore", `${options.yearTo + 1}-01-01`);
   }
+  return search;
+}
 
-  const itemIds: number[] = await search.search();
+/**
+ * Search the local Zotero libraries using the Zotero.Search API.
+ * Searches title, creator, DOI, and ISBN fields across the personal library
+ * and every group library.
+ */
+export async function searchZoteroLocal(options: {
+  query: string;
+  yearFrom?: number;
+  yearTo?: number;
+  prioritizedItemIds?: Set<number>;
+}): Promise<SearchResponse> {
+  const start = Date.now();
+
+  // Zotero.Search is scoped to a single library, so run one search per library
+  // and merge. Item IDs are globally unique, so the lists just concatenate.
+  const libraryIDs = getSearchableLibraryIDs();
+  const idLists = await Promise.all(libraryIDs.map(async (libraryID) => {
+    try {
+      return (await buildLibrarySearch(libraryID, options).search()) as number[];
+    } catch (err) {
+      if (typeof Zotero !== "undefined") {
+        Zotero.log("[InstantCite] Local search failed for library " + libraryID + ": " + err);
+      }
+      return [] as number[];
+    }
+  }));
+  const itemIds: number[] = idLists.flat();
+
   if (!itemIds || itemIds.length === 0) {
     return { source: "Zotero", results: [], totalCount: 0, searchTimeMs: Date.now() - start };
   }

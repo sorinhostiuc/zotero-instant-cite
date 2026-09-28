@@ -53,7 +53,7 @@ vi.mock("../src/modules/dedup-dialog", () => ({
   openMergeDialog: vi.fn(),
 }));
 vi.mock("../src/modules/integration-patch", () => ({
-  documentItemIds: new Set(),
+  getDocumentItemIds: vi.fn(() => new Set()),
   loadDocumentItemIdsFromCitationIO: vi.fn(),
 }));
 vi.mock("../src/modules/utils/document-priority", () => ({
