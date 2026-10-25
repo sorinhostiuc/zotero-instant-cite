@@ -7,13 +7,12 @@ export async function searchEurLex(options: SearchOptions): Promise<SearchRespon
   const start = Date.now();
   const maxResults = Math.min(options.maxResults ?? 20, 30); // Keep low for SPARQL performance
 
-  const searchTerms = options.query.trim().toLowerCase();
-  if (!searchTerms) {
+  const fulltext = buildFulltextExpression(options.query);
+  if (!fulltext) {
     return { source: "EUR-Lex", results: [], totalCount: 0, searchTimeMs: 0 };
   }
 
-  // Build SPARQL query — single-graph title search (fast, avoids cross-graph joins)
-  const sparql = buildSparqlQuery(searchTerms, maxResults);
+  const sparql = buildSparqlQuery(fulltext, maxResults);
   const body = "query=" + encodeURIComponent(sparql);
 
   const text = await sparqlPost(body);
@@ -42,17 +41,38 @@ export async function searchEurLex(options: SearchOptions): Promise<SearchRespon
   };
 }
 
-function buildSparqlQuery(searchTerms: string, limit: number): string {
-  const escaped = escapeSparql(searchTerms);
+// A FILTER(CONTAINS(LCASE(str(?title)), ...)) scans every expression title in
+// CELLAR and took 10-40 s, so EUR-Lex hit the request timeout on most keyword
+// searches and held back the whole result list. Virtuoso's free-text index
+// (bif:contains) answers the same question in about 0.3 s. It matches whole
+// tokens, and very short or function words match so many titles that the
+// lookup becomes slow again, so those are dropped.
+const SPARQL_TIMEOUT_MS = 6000;
+const FULLTEXT_MIN_WORD_LEN = 3;
+const FULLTEXT_MAX_WORDS = 8;
+const FULLTEXT_STOPWORDS = new Set([
+  "and", "are", "for", "from", "into", "not", "the", "this", "that", "with",
+]);
 
+/** Virtuoso free-text expression for `bif:contains`; null if no word is usable. */
+export function buildFulltextExpression(query: string): string | null {
+  const words: string[] = [];
+  // Letters and digits only, so the tokens never need escaping inside the literal
+  for (const word of query.toLowerCase().split(/[^\p{L}\p{N}]+/u)) {
+    if (word.length < FULLTEXT_MIN_WORD_LEN || FULLTEXT_STOPWORDS.has(word)) continue;
+    if (!words.includes(word)) words.push(word);
+    if (words.length >= FULLTEXT_MAX_WORDS) break;
+  }
+  return words.length > 0 ? words.map(w => `"${w}"`).join(" AND ") : null;
+}
+
+export function buildSparqlQuery(fulltext: string, limit: number): string {
   return `PREFIX cdm: <http://publications.europa.eu/ontology/cdm#>
 SELECT ?expr ?title ?work WHERE {
-  GRAPH ?g {
-    ?expr cdm:expression_title ?title .
-    FILTER(lang(?title) = 'en')
-    FILTER(CONTAINS(LCASE(str(?title)), '${escaped}'))
-    ?expr cdm:expression_belongs_to_work ?work .
-  }
+  ?expr cdm:expression_title ?title .
+  ?title bif:contains '${fulltext}' .
+  FILTER(lang(?title) = 'en')
+  ?expr cdm:expression_belongs_to_work ?work .
 }
 LIMIT ${limit}`;
 }
@@ -169,17 +189,6 @@ function detectDocType(title: string): DocTypeInfo {
   return { label: "EUR-Lex", institution: "European Union" };
 }
 
-/** Escape special characters for SPARQL string literals */
-function escapeSparql(s: string): string {
-  return s
-    .replace(/\\/g, "\\\\")
-    .replace(/'/g, "\\'")
-    .replace(/"/g, '\\"')
-    .replace(/\n/g, "\\n")
-    .replace(/\r/g, "\\r")
-    .replace(/\t/g, "\\t");
-}
-
 /** POST to SPARQL endpoint with fallback for test environment */
 async function sparqlPost(body: string): Promise<string> {
   if (typeof Zotero !== "undefined" && Zotero.HTTP?.request) {
@@ -191,7 +200,7 @@ async function sparqlPost(body: string): Promise<string> {
         "User-Agent": USER_AGENT,
       },
       responseType: "text",
-      timeout: 15000,
+      timeout: SPARQL_TIMEOUT_MS,
     });
     if (resp.status >= 200 && resp.status < 300) {
       return resp.responseText;
@@ -203,7 +212,7 @@ async function sparqlPost(body: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", SPARQL_ENDPOINT, true);
-    xhr.timeout = 15000;
+    xhr.timeout = SPARQL_TIMEOUT_MS;
     xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
     xhr.setRequestHeader("Accept", "application/sparql-results+json");
     try { xhr.setRequestHeader("User-Agent", USER_AGENT); } catch { /* forbidden in some contexts */ }
