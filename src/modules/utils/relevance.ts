@@ -15,9 +15,35 @@ const STOP_WORDS = new Set([
   "such", "only", "own", "same", "very", "just", "because", "also",
 ]);
 
-/** Extract meaningful terms from a query, filtering out stop words */
+// Abbreviated company forms and case-name connectors ("Leyland Shipping Co
+// Ltd v ..."). Title matching is by substring, so "co" alone hits "economic"
+// or "court": these words must neither score nor be sent to the sources.
+// Spelled-out words ("company", "limited") stay, as in "company law".
+const COMPANY_FORMS = new Set([
+  "co", "cos", "ltd", "inc", "plc", "llc", "llp", "corp", "pty", "sa", "srl", "gmbh",
+  "vs", "v", "&",
+]);
+
+function isCompanyForm(word: string): boolean {
+  return COMPANY_FORMS.has(word.toLowerCase().replace(/[.,]+$/, ""));
+}
+
+/** Extract meaningful terms from a query, filtering out stop words and company forms */
 function extractTerms(query: string): string[] {
-  return query.toLowerCase().split(/\s+/).filter(t => t.length > 1 && !STOP_WORDS.has(t));
+  return query.toLowerCase().split(/\s+/)
+    .map(t => t.replace(/[.,;:]+$/, ""))
+    .filter(t => t.length > 1 && !STOP_WORDS.has(t) && !isCompanyForm(t));
+}
+
+/**
+ * Drop company forms from a keyword query before it goes to the external
+ * sources, which otherwise rank anything "Co. Ltd" above the name searched
+ * for. Returns the query unchanged when nothing else would be left.
+ */
+export function stripCompanyForms(query: string): string {
+  const words = query.trim().split(/\s+/);
+  const kept = words.filter(w => !isCompanyForm(w));
+  return kept.length > 0 && kept.length < words.length ? kept.join(" ") : query;
 }
 
 /** Strip URL prefix from a DOI-shaped query so callers can compare cleanly. */

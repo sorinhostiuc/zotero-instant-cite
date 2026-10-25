@@ -11,7 +11,7 @@ import { searchLoC } from "./api/loc";
 import { searchRoLex } from "./api/ro-lex";
 import { detectQueryType } from "./utils/query-detector";
 import { deduplicateResults } from "./utils/deduplicator";
-import { rankResults, scoreRelevance } from "./utils/relevance";
+import { rankResults, scoreRelevance, stripCompanyForms } from "./utils/relevance";
 import { sortByProvenance } from "./utils/document-priority";
 import type { PaperResult, SearchOptions, SearchResponse } from "./api/types";
 
@@ -186,7 +186,8 @@ export async function orchestrateSearch(
       if (localResults.length > 0) {
         allResults.push(...localResults);
       }
-      const externalSearches = buildSearches(enabledSources, options, errors, true);
+      const externalOptions = { ...options, query: stripCompanyForms(options.query) };
+      const externalSearches = buildSearches(enabledSources, externalOptions, errors, true);
       if (externalSearches.length > 0) {
         if (onProgress && allResults.length > 0) {
           // Show the library hits while the internet sources are still out.
