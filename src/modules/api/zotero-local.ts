@@ -1,6 +1,7 @@
 import type { PaperResult, SearchResponse } from "./types";
 import { sortItemIdsByDocumentPriority } from "../utils/document-priority";
 import { detectQueryType } from "../utils/query-detector";
+import { urlMatchKey } from "../utils/url-identifiers";
 
 /**
  * Pick the search condition that can actually match the query.
@@ -16,13 +17,15 @@ export function addQueryCondition(search: any, query: string): void {
     : detection.type === "PMID" ? "extra"   // Zotero stores PMIDs in Extra
     : detection.type === "OPENALEX_ID" ? "extra"
     : detection.type === "ISBN" ? "ISBN"
+    : detection.type === "URL" ? "url"
     : null;
 
   if (identifierField) {
     try {
       // "contains", not "is": stored DOIs often keep the https://doi.org/
       // prefix, and Extra holds the PMID among other lines.
-      search.addCondition(identifierField, "contains", detection.value);
+      const value = detection.type === "URL" ? urlMatchKey(detection.value) : detection.value;
+      search.addCondition(identifierField, "contains", value);
       return;
     } catch {
       // Field unsupported in this Zotero build — fall back to quicksearch.

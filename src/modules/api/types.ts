@@ -43,6 +43,11 @@ export interface PaperResult {
   celex?: string;               // CELEX number (EUR-Lex)
   ecli?: string;                // European Case Law Identifier
   url?: string;                 // Direct URL to the document
+
+  // Item read from a web page by Zotero's translators, in translator JSON.
+  // When present the bridge saves this record as is, so fields PaperResult
+  // has no slot for (website title, access date, language) survive.
+  zoteroJSON?: Record<string, any>;
 }
 
 export interface SearchOptions {
@@ -75,4 +80,4 @@ export interface SearchResponse {
   searchTimeMs: number;
 }
 
-export type QueryType = "DOI" | "PMID" | "ISBN" | "OPENALEX_ID" | "KEYWORD";
+export type QueryType = "DOI" | "PMID" | "ISBN" | "OPENALEX_ID" | "URL" | "KEYWORD";

@@ -7,6 +7,7 @@ Instant Cite joins bibliographic search, reference management, and citation in o
 ## What it does
 
 - Searches by title, author, keyword, DOI, ISBN, or PMID.
+- Takes a web link: a DOI, PMID or OpenAlex ID in the link is looked up directly; otherwise Zotero's own translators read the page, as the Zotero Connector would, and the reference is saved with every field they fill.
 - Advanced search narrows a query by title, author, DOI or ISBN, document type, and year or year range.
 - Queries your Zotero library and the academic, bibliographic, or legal sources you enable.
 - Orders results by relevance and checks them against items already in your library.

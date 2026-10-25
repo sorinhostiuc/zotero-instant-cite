@@ -14,6 +14,12 @@ export function detectQueryType(raw: string): QueryDetection {
     return { type: "DOI", value: doiStripped };
   }
 
+  // Web link: the page is read for its identifiers or translated by Zotero.
+  // Checked after the DOI so doi.org links keep the direct DOI lookup.
+  if (/^(?:https?:\/\/|www\.)[^\s]+$/i.test(query)) {
+    return { type: "URL", value: /^www\./i.test(query) ? "https://" + query : query };
+  }
+
   // ISBN-10/13, with or without hyphens and an "ISBN" label. The checksum
   // keeps other 10/13 digit numbers (phone numbers, case numbers) out.
   const isbn = normalizeISBN(query);

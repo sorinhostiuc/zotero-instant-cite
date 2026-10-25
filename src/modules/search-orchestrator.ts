@@ -11,7 +11,9 @@ import { searchLoC } from "./api/loc";
 import { searchRoLex } from "./api/ro-lex";
 import { searchBCUB } from "./api/bcub";
 import { searchOpenAlex, lookupOpenAlexWork } from "./api/openalex";
+import { translateWebPage } from "./api/web-page";
 import { detectQueryType } from "./utils/query-detector";
+import { identifiersFromURL, type UrlIdentifiers } from "./utils/url-identifiers";
 import { deduplicateResults } from "./utils/deduplicator";
 import { rankResults, scoreRelevance, stripCompanyForms } from "./utils/relevance";
 import { sortByProvenance } from "./utils/document-priority";
@@ -66,7 +68,8 @@ export async function orchestrateSearch(
   // For DOI queries, downstream ranking should compare against the normalized
   // DOI (without the https://doi.org/ prefix), so the relevance scorer can
   // detect exact DOI match.
-  const effectiveQuery = detection.type === "DOI" ? detection.value : options.query;
+  const urlIds: UrlIdentifiers = detection.type === "URL" ? identifiersFromURL(detection.value) : {};
+  const effectiveQuery = detection.type === "DOI" ? detection.value : urlIds.doi ?? options.query;
 
   let allResults: PaperResult[] = [];
   if (!options.query.trim()) {
@@ -128,6 +131,45 @@ export async function orchestrateSearch(
     ], idOptions, errors);
     const idResults = await awaitSources(idSources);
     collectResults(idResults, idSources, allResults, sourceCounts);
+  } else if (detection.type === "URL") {
+    // A link: look up the identifier it carries first (exact, and it works on
+    // sites that refuse automated requests), and read the page itself only
+    // when that finds nothing.
+    let idSources: SourceSearch[] = [];
+    if (urlIds.doi) {
+      const doi = urlIds.doi;
+      const doiOptions = { ...options, query: doi };
+      idSources = buildIdentifierSources(options, [
+        { source: "CrossRef", run: () => lookupCrossRefDOI(doi) },
+        { source: "PubMed",   run: () => searchPubMed(doiOptions) },
+      ], doiOptions, errors);
+    } else if (urlIds.pmid) {
+      const pmidOptions = { ...options, query: urlIds.pmid };
+      idSources = buildIdentifierSources(options, [
+        { source: "PubMed", run: () => searchPubMed(pmidOptions) },
+      ], pmidOptions, errors);
+    } else if (urlIds.openalexId) {
+      const id = urlIds.openalexId;
+      idSources = buildIdentifierSources(options, [
+        { source: "OpenAlex", run: () => lookupOpenAlexWork(id) },
+      ], { ...options, query: id }, errors);
+    }
+    if (idSources.length > 0) {
+      const idResults = await awaitSources(idSources);
+      collectResults(idResults, idSources, allResults, sourceCounts);
+    }
+    if (allResults.length === 0 && new Set(options.sources ?? ALL_SOURCES).has("Zotero")) {
+      // A link already saved in the library needs no download.
+      const urlOptions = { ...options, query: detection.value };
+      const local = await safeSearch(() => searchZoteroLocal(urlOptions), "Zotero", errors);
+      collectResults([local], [{ source: "Zotero" }], allResults, sourceCounts);
+    }
+    if (allResults.length === 0) {
+      // The page goes through Zotero's translators whatever sources are
+      // enabled, since the user named it.
+      const web = await safeSearch(() => translateWebPage(detection.value), "Web", errors);
+      collectResults([web], [{ source: "Web" }], allResults, sourceCounts);
+    }
   } else if (detection.type === "DOI") {
     // Fast path: local library + CrossRef /works/{DOI} (canonical) + PubMed
     // esearch with [doi] tag, in parallel. Either external source is enough to

@@ -1,5 +1,6 @@
 import type { PaperResult } from "./api/types";
 import { isAutoDownloadPDF } from "./preferences";
+import { translatorItemForSaving } from "./api/web-page";
 
 /**
  * Add paper to Zotero library.
@@ -43,6 +44,12 @@ export async function addToZotero(paper: PaperResult, skipPDF = false): Promise<
       }
     }
     return existing;
+  }
+
+  if (paper.zoteroJSON) {
+    const item = await addTranslatedItem(paper);
+    if (!skipPDF && isAutoDownloadPDF()) tryDownloadPDFBackground(item, paper);
+    return item;
   }
 
   const itemType = paper.itemType || (paper.isbn ? "book" : "journalArticle");
@@ -113,6 +120,18 @@ export async function addToZotero(paper: PaperResult, skipPDF = false): Promise<
   }
 
   Zotero.log("[InstantCite] Added: " + paper.title);
+  return item;
+}
+
+/** Save a record read from a web page with every field its translator filled. */
+async function addTranslatedItem(paper: PaperResult): Promise<Zotero.Item> {
+  const json = translatorItemForSaving(paper.zoteroJSON!);
+  const item = new Zotero.Item(json.itemType);
+  item.libraryID = Zotero.Libraries.userLibraryID;
+  item.fromJSON(json);
+  await item.saveTx();
+  (paper as any)._zoteroItemId = item.id;
+  Zotero.log("[InstantCite] Added from web page: " + paper.title);
   return item;
 }
 
