@@ -42,7 +42,18 @@ export interface OrchestratedResult {
   doiFallback?: boolean;
 }
 
-export async function orchestrateSearch(options: SearchOptions): Promise<OrchestratedResult> {
+/** Results merged so far, delivered after every source that answers. */
+export interface SearchProgress extends OrchestratedResult {
+  /** Sources still being waited on */
+  pending: string[];
+}
+
+type SourceSearch = { promise: Promise<SearchResponse | null>; source: string };
+
+export async function orchestrateSearch(
+  options: SearchOptions,
+  onProgress?: (progress: SearchProgress) => void,
+): Promise<OrchestratedResult> {
   const start = Date.now();
   const detection = detectQueryType(options.query);
   const errors: Array<{ source: string; error: string }> = [];
@@ -55,6 +66,33 @@ export async function orchestrateSearch(options: SearchOptions): Promise<Orchest
 
   let allResults: PaperResult[] = [];
 
+  // Waits for every source but reports each one as it answers, so one slow
+  // source no longer hides the results the others already returned. Results
+  // are merged in source order, not arrival order, so deduplication keeps the
+  // same surviving record (the local one first) as a plain Promise.all would.
+  const awaitSources = async (searches: SourceSearch[]): Promise<Array<SearchResponse | null>> => {
+    const settled: Array<SearchResponse | null | undefined> = searches.map(() => undefined);
+    await Promise.all(searches.map((s, i) => s.promise.then((r) => {
+      settled[i] = r;
+      if (!onProgress) return;
+      const snapshot = allResults.slice();
+      const counts = { ...sourceCounts };
+      settled.forEach((done, j) => {
+        if (!done) return;
+        snapshot.push(...done.results);
+        counts[searches[j].source] = done.results.length;
+      });
+      const partial = buildOutcome(snapshot, counts, errors, start, effectiveQuery, options, doiFallback);
+      const pending = searches.filter((_, j) => settled[j] === undefined).map(x => x.source);
+      try {
+        onProgress({ ...partial, pending });
+      } catch (err) {
+        if (typeof Zotero !== "undefined") Zotero.log("[InstantCite] Progress callback failed: " + err);
+      }
+    })));
+    return settled as Array<SearchResponse | null>;
+  };
+
   // For direct ID lookups, only query the relevant source
   if (detection.type === "PMID") {
     // The local library is searched alongside PubMed — a PMID lookup that only
@@ -63,7 +101,7 @@ export async function orchestrateSearch(options: SearchOptions): Promise<Orchest
     const idSources = buildIdentifierSources(options, [
       { source: "PubMed", run: () => searchPubMed(pmidOptions) },
     ], pmidOptions, errors);
-    const idResults = await Promise.all(idSources.map(s => s.promise));
+    const idResults = await awaitSources(idSources);
     collectResults(idResults, idSources, allResults, sourceCounts);
   } else if (detection.type === "DOI") {
     // Fast path: local library + CrossRef /works/{DOI} (canonical) + PubMed
@@ -75,7 +113,7 @@ export async function orchestrateSearch(options: SearchOptions): Promise<Orchest
       { source: "CrossRef", run: () => lookupCrossRefDOI(detection.value) },
       { source: "PubMed",   run: () => searchPubMed(doiOptions) },
     ], doiOptions, errors);
-    const fastResults = await Promise.all(fastSources.map(s => s.promise));
+    const fastResults = await awaitSources(fastSources);
     let foundAny = false;
     for (let i = 0; i < fastResults.length; i++) {
       const r = fastResults[i];
@@ -101,7 +139,7 @@ export async function orchestrateSearch(options: SearchOptions): Promise<Orchest
       enabledSources.delete("CrossRef");
       enabledSources.delete("PubMed");
       const fallbackSearches = buildSearches(enabledSources, doiOptions, errors);
-      const fallbackResults = await Promise.all(fallbackSearches.map(s => s.promise));
+      const fallbackResults = await awaitSources(fallbackSearches);
       collectResults(fallbackResults, fallbackSearches, allResults, sourceCounts);
     }
   } else {
@@ -150,13 +188,30 @@ export async function orchestrateSearch(options: SearchOptions): Promise<Orchest
       }
       const externalSearches = buildSearches(enabledSources, options, errors, true);
       if (externalSearches.length > 0) {
-        const externalResults = await Promise.all(externalSearches.map(s => s.promise));
+        if (onProgress && allResults.length > 0) {
+          // Show the library hits while the internet sources are still out.
+          const partial = buildOutcome(allResults.slice(), { ...sourceCounts }, errors, start, effectiveQuery, options, false);
+          onProgress({ ...partial, pending: externalSearches.map(x => x.source) });
+        }
+        const externalResults = await awaitSources(externalSearches);
         collectResults(externalResults, externalSearches, allResults, sourceCounts);
       }
     }
   }
 
-  // Deduplicate and rank
+  return buildOutcome(allResults, sourceCounts, errors, start, effectiveQuery, options, doiFallback);
+}
+
+/** Deduplicate, rank and package the results gathered so far. */
+function buildOutcome(
+  allResults: PaperResult[],
+  sourceCounts: Record<string, number>,
+  errors: Array<{ source: string; error: string }>,
+  start: number,
+  effectiveQuery: string,
+  options: SearchOptions,
+  doiFallback: boolean,
+): OrchestratedResult {
   const deduplicated = deduplicateResults(allResults);
   // Relevance ranks inside a tier; provenance decides the tiers themselves:
   // cited in the document → already in the library → fetched from the internet.
@@ -179,7 +234,7 @@ export async function orchestrateSearch(options: SearchOptions): Promise<Orchest
     totalCount: ranked.length,
     sourceCounts,
     searchTimeMs: Date.now() - start,
-    errors,
+    errors: errors.slice(),
     localSufficient: topIsLocal && bestUnbiasedLocalScore >= LOCAL_SUFFICIENT_SCORE,
     doiFallback,
   };
@@ -196,7 +251,7 @@ function buildIdentifierSources(
   externals: Array<{ source: string; run: () => Promise<SearchResponse> }>,
   localOptions: SearchOptions,
   errors: Array<{ source: string; error: string }>,
-): Array<{ promise: Promise<SearchResponse | null>; source: string }> {
+): SourceSearch[] {
   const enabledSources = new Set(options.sources ?? ALL_SOURCES);
   const sources: Array<{ source: string; run: () => Promise<SearchResponse> }> = [];
 
@@ -217,7 +272,7 @@ function buildSearches(
   options: SearchOptions,
   errors: Array<{ source: string; error: string }>,
   externalOnly = false,
-): Array<{ promise: Promise<SearchResponse | null>; source: string }> {
+): SourceSearch[] {
   const searchMap: Record<string, () => Promise<SearchResponse>> = {
     Zotero: () => searchZoteroLocal(options),
     PubMed: () => searchPubMed(options),
@@ -233,7 +288,7 @@ function buildSearches(
   };
 
   const sourcesToSearch = externalOnly ? EXTERNAL_SOURCES : ALL_SOURCES;
-  const searches: Array<{ promise: Promise<SearchResponse | null>; source: string }> = [];
+  const searches: SourceSearch[] = [];
 
   for (const source of sourcesToSearch) {
     if (enabledSources.has(source) && searchMap[source]) {

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { orchestrateSearch } from "../src/modules/search-orchestrator";
+import { orchestrateSearch, type SearchProgress } from "../src/modules/search-orchestrator";
+import { searchPubMed } from "../src/modules/api/pubmed";
 
 // Mock all API modules
 vi.mock("../src/modules/api/pubmed", () => ({
@@ -105,5 +106,46 @@ describe("orchestrateSearch", () => {
       "zotero-local:42",
       "pubmed:1",
     ]);
+  });
+});
+
+describe("orchestrateSearch progress", () => {
+  it("shows each source as it answers instead of waiting for the slowest", async () => {
+    let releasePubMed!: () => void;
+    vi.mocked(searchPubMed).mockImplementationOnce(() => new Promise((resolve) => {
+      releasePubMed = () => resolve({
+        source: "PubMed",
+        results: [{ id: "pubmed:9", title: "Slow answer", authors: [], year: 2020, isOpenAccess: false, sources: ["PubMed"] }],
+        totalCount: 1,
+        searchTimeMs: 90000,
+      });
+    }));
+
+    const updates: SearchProgress[] = [];
+    const search = orchestrateSearch(
+      { query: "brain injury", sources: ["Zotero", "PubMed", "CrossRef"] },
+      (p) => updates.push(p),
+    );
+
+    await vi.waitFor(() => expect(updates.at(-1)?.pending).toEqual(["PubMed"]));
+    // The library hits come first, alone, before any internet source answers.
+    expect(updates[0].papers.map(p => p.id)).toEqual(["zotero-local:42", "zotero-local:7"]);
+    expect(updates[0].pending).toEqual(["PubMed", "CrossRef"]);
+    // CrossRef is on screen while PubMed is still out.
+    expect(updates.at(-1)!.papers.map(p => p.id)).toContain("crossref:10.1234/test");
+
+    releasePubMed();
+    const result = await search;
+    expect(updates.at(-1)!.pending).toEqual([]);
+    expect(result.papers.map(p => p.id)).toEqual(updates.at(-1)!.papers.map(p => p.id));
+    expect(result.papers.map(p => p.id)).toContain("pubmed:9");
+    expect(result.sourceCounts).toEqual({ Zotero: 2, PubMed: 1, CrossRef: 1 });
+  });
+
+  it("keeps the same final result whether or not progress is requested", async () => {
+    const plain = await orchestrateSearch({ query: "brain injury" });
+    const withProgress = await orchestrateSearch({ query: "brain injury" }, () => {});
+    expect(withProgress.papers.map(p => p.id)).toEqual(plain.papers.map(p => p.id));
+    expect(withProgress.sourceCounts).toEqual(plain.sourceCounts);
   });
 });

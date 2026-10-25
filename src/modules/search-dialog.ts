@@ -1,4 +1,4 @@
-import { orchestrateSearch, type OrchestratedResult } from "./search-orchestrator";
+import { orchestrateSearch, type OrchestratedResult, type SearchProgress } from "./search-orchestrator";
 import { searchZoteroLocal } from "./api/zotero-local";
 import { renderResults, clearResults, updateSourceTabs, showLoading, hideLoading } from "./result-renderer";
 import { addToZotero, downloadAndOpenPDF, openPaperOrPDF } from "./zotero-bridge";
@@ -40,6 +40,8 @@ let localSearchTimer: ReturnType<typeof setTimeout> | null = null;
 let documentItemIdsLoadTimer: ReturnType<typeof setTimeout> | null = null;
 let existingCitationLoadTimer: ReturnType<typeof setTimeout> | null = null;
 let isFullSearchDone = false;
+/** Bumped by every new full search and by typing, so a stale search stops updating the list */
+let fullSearchSeq = 0;
 let currentSortField = "relevance";
 let currentSortDir: "asc" | "desc" = "desc";
 
@@ -342,6 +344,7 @@ function initDialogEvents(win: Window) {
   // Debounced local search — instant results from My Library as user types
   searchInput?.addEventListener("input", () => {
     isFullSearchDone = false; // New typing resets full search state
+    fullSearchSeq++;
     if (!isLocalSearchEnabled()) return; // Disabled in settings
     if (localSearchTimer) clearTimeout(localSearchTimer);
     localSearchTimer = setTimeout(() => {
@@ -1595,6 +1598,8 @@ async function performFullSearch(win: Window) {
     localSearchTimer = null;
   }
 
+  const seq = ++fullSearchSeq;
+  activeFilter = "all";
   showLoading(doc);
 
   const options: SearchOptions = { query, maxResults: getMaxResults(), prioritizedItemIds: getDocumentItemIds() };
@@ -1627,7 +1632,12 @@ async function performFullSearch(win: Window) {
   }
 
   try {
-    currentResults = await orchestrateSearch(options);
+    const finalResults = await orchestrateSearch(options, (progress) => {
+      if (seq !== fullSearchSeq) return;
+      showPartialResults(doc, progress);
+    });
+    if (seq !== fullSearchSeq) return;
+    currentResults = finalResults;
     isFullSearchDone = true;
     activeFilter = "all";
     // Don't clear selectedPapers — keep existing citation selections
@@ -1650,10 +1660,33 @@ async function performFullSearch(win: Window) {
       }
     }
   } catch (err) {
+    if (seq !== fullSearchSeq) return;
     clearResults(doc);
     showError(doc, err instanceof Error ? err.message : "Search failed");
   } finally {
     hideLoading(doc);
+  }
+}
+
+/**
+ * Put the sources that already answered on screen while the rest are still
+ * out, keeping the scroll position so the list does not jump under the user.
+ */
+function showPartialResults(doc: Document, progress: SearchProgress) {
+  // Nothing yet: leave the spinner rather than a premature "No results found".
+  if (progress.papers.length === 0 && progress.pending.length > 0) return;
+
+  const container = doc.getElementById("results-container");
+  const scrollTop = container?.scrollTop ?? 0;
+  currentResults = progress;
+  updateSourceTabs(doc, progress.sourceCounts, progress.totalCount);
+  renderCurrentResults(doc);
+  if (container) container.scrollTop = scrollTop;
+
+  const el = doc.getElementById("results-count");
+  if (el && progress.pending.length > 0) {
+    el.textContent = progress.totalCount + " results so far • still searching: " +
+      progress.pending.join(", ");
   }
 }
 
