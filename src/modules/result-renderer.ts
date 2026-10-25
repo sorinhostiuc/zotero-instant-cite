@@ -1,4 +1,5 @@
 import type { PaperResult } from "./api/types";
+import { canFetchAbstract, fetchAbstract } from "./api/abstract-fetch";
 
 type SelectCallback = (paper: PaperResult, selected: boolean) => void;
 type ActionCallback = (paper: PaperResult, action: "addLibrary" | "addCite" | "downloadPdf" | "edit" | "autoUpdate" | "openBrowser", card?: HTMLElement) => void;
@@ -130,33 +131,6 @@ function createResultCard(
   sources.textContent = "Found in: " + paper.sources.join(", ");
   content.appendChild(sources);
 
-  // Abstract (visible preview + expandable full text)
-  if (paper.abstract) {
-    const PREVIEW_LEN = 200;
-    const isLong = paper.abstract.length > PREVIEW_LEN;
-
-    const abstractDiv = doc.createElement("div");
-    abstractDiv.className = "result-abstract";
-    abstractDiv.textContent = isLong
-      ? paper.abstract.slice(0, PREVIEW_LEN) + "..."
-      : paper.abstract;
-    content.appendChild(abstractDiv);
-
-    if (isLong) {
-      const toggle = doc.createElement("button");
-      toggle.className = "abstract-toggle";
-      toggle.textContent = "Show full abstract";
-      let expanded = false;
-      toggle.addEventListener("click", (e) => {
-        e.stopPropagation();
-        expanded = !expanded;
-        abstractDiv.textContent = expanded ? paper.abstract! : paper.abstract!.slice(0, PREVIEW_LEN) + "...";
-        toggle.textContent = expanded ? "Show less" : "Show full abstract";
-      });
-      content.appendChild(toggle);
-    }
-  }
-
   // Action buttons
   const actions = doc.createElement("div");
   actions.className = "result-actions";
@@ -198,7 +172,22 @@ function createResultCard(
     }));
   }
 
-  content.appendChild(actions);
+  // Abstract on demand: nothing is fetched until the button is clicked
+  if (canFetchAbstract(paper)) {
+    const panel = doc.createElement("div");
+    panel.className = "result-abstract";
+    panel.hidden = true;
+    // Selecting text in the abstract must not toggle the card
+    panel.addEventListener("click", (e) => e.stopPropagation());
+    actions.appendChild(makeBtn(doc, "Abstract", (e) => {
+      e.stopPropagation();
+      toggleAbstract(paper, panel, e.target as HTMLElement);
+    }));
+    content.appendChild(actions);
+    content.appendChild(panel);
+  } else {
+    content.appendChild(actions);
+  }
 
   // Click card = toggle select
   card.addEventListener("click", (e) => {
@@ -211,6 +200,28 @@ function createResultCard(
 
   card.appendChild(content);
   return card;
+}
+
+async function toggleAbstract(paper: PaperResult, panel: HTMLElement, btn: HTMLElement) {
+  if (!panel.hidden) {
+    panel.hidden = true;
+    btn.textContent = "Abstract";
+    return;
+  }
+  panel.hidden = false;
+  btn.textContent = "Hide abstract";
+  if (panel.dataset.loaded) return;
+  panel.classList.add("abstract-pending");
+  panel.textContent = "Loading abstract...";
+  const text = await fetchAbstract(paper).catch(() => undefined);
+  panel.classList.remove("abstract-pending");
+  if (text) {
+    panel.dataset.loaded = "1";
+    panel.textContent = text;
+  } else {
+    panel.classList.add("abstract-pending");
+    panel.textContent = "No abstract found for this reference.";
+  }
 }
 
 function makeBadge(doc: Document, text: string, cls: string): HTMLElement {
