@@ -288,6 +288,7 @@ export const ALL_SOURCE_NAMES = [
   { id: "DOAJ", label: "DOAJ" },
   { id: "OpenLibrary", label: "Open Library" },
   { id: "LoC", label: "Library of Congress" },
+  { id: "BCUB", label: "BCU București (catalog)" },
   { id: "ECHR", label: "ECHR (Case Law)" },
   { id: "EUR-Lex", label: "EUR-Lex (Legislation)" },
   { id: "RO-Lex", label: "RO-Lex (Legislație RO)" },

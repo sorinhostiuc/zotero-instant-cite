@@ -7,6 +7,7 @@ export interface Author {
   lastName?: string;
   firstName?: string;
   isCorporate?: boolean;   // true → single-field creator (fieldMode: 1)
+  creatorType?: string;    // Zotero creator type; default "author"
   orcid?: string;
   affiliation?: string;
 }

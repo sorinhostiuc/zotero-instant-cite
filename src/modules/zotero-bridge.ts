@@ -120,14 +120,14 @@ async function addAuthorsToItem(item: Zotero.Item, paper: PaperResult) {
       if (author.isCorporate) {
         item.setCreator(item.getCreators().length, {
           lastName: (author.lastName || author.name).trim(),
-          creatorType: "author",
+          creatorType: author.creatorType || "author",
           fieldMode: 1,
         } as any);
       } else {
         item.setCreator(item.getCreators().length, {
           firstName: (author.firstName || "").trim(),
           lastName: (author.lastName || "").trim(),
-          creatorType: "author",
+          creatorType: author.creatorType || "author",
         });
       }
       continue;

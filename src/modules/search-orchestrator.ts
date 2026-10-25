@@ -9,6 +9,7 @@ import { searchCourtListener } from "./api/courtlistener";
 import { searchZoteroLocal } from "./api/zotero-local";
 import { searchLoC } from "./api/loc";
 import { searchRoLex } from "./api/ro-lex";
+import { searchBCUB } from "./api/bcub";
 import { detectQueryType } from "./utils/query-detector";
 import { deduplicateResults } from "./utils/deduplicator";
 import { rankResults, scoreRelevance, stripCompanyForms } from "./utils/relevance";
@@ -17,13 +18,13 @@ import type { PaperResult, SearchOptions, SearchResponse } from "./api/types";
 
 const ALL_SOURCES = [
   "Zotero", "PubMed", "EuropePMC", "CrossRef", "DOAJ", "OpenLibrary",
-  "LoC",
+  "LoC", "BCUB",
   "ECHR", "EUR-Lex", "RO-Lex", "CourtListener",
 ];
 
 const EXTERNAL_SOURCES = [
   "PubMed", "EuropePMC", "CrossRef", "DOAJ", "OpenLibrary",
-  "LoC",
+  "LoC", "BCUB",
   "ECHR", "EUR-Lex", "RO-Lex", "CourtListener",
 ];
 
@@ -282,6 +283,7 @@ function buildSearches(
     DOAJ: () => searchDOAJ(options),
     OpenLibrary: () => searchOpenLibrary(options),
     LoC: () => searchLoC(options),
+    BCUB: () => searchBCUB(options),
     ECHR: () => searchECHR(options),
     "EUR-Lex": () => searchEurLex(options),
     "RO-Lex": () => searchRoLex(options),
