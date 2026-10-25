@@ -37,6 +37,12 @@ async function httpGet(url: string, timeoutMs: number): Promise<string> {
           Accept: "application/json, text/xml, */*",
         },
         responseType: "text",
+        // Zotero.HTTP.request otherwise retries 429/5xx answers (honoring
+        // Retry-After, then backing off up to 5 min) for up to an hour, which
+        // left the whole search waiting minutes on one throttled source.
+        // safeSearch already retries a 429 once.
+        errorDelayMax: 0,
+        noRetryOnThrottle: true,
       });
       if (resp.status >= 200 && resp.status < 300) {
         return resp.responseText;

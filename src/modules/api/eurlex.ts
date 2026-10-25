@@ -201,6 +201,9 @@ async function sparqlPost(body: string): Promise<string> {
       },
       responseType: "text",
       timeout: SPARQL_TIMEOUT_MS,
+      // No automatic 429/5xx retries (see base-client.ts httpGet).
+      errorDelayMax: 0,
+      noRetryOnThrottle: true,
     });
     if (resp.status >= 200 && resp.status < 300) {
       return resp.responseText;
