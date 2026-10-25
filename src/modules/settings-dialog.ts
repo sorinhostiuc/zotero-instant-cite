@@ -146,6 +146,16 @@ export function openSettingsDialog(doc: Document, onClose?: () => void) {
       select.value = getPref<string>(pref.name);
       controlDiv.appendChild(select);
       inputMap.set(pref.name, select);
+    } else if (pref.type === "text") {
+      const input = doc.createElement("input") as HTMLInputElement;
+      input.type = pref.secret ? "password" : "text";
+      input.className = "settings-text-input";
+      input.spellcheck = false;
+      input.autocomplete = "off";
+      if (pref.placeholder) input.placeholder = pref.placeholder;
+      input.value = String(getPref<string>(pref.name) ?? "");
+      controlDiv.appendChild(input);
+      inputMap.set(pref.name, input);
     }
 
     row.appendChild(controlDiv);
@@ -430,6 +440,8 @@ export function openSettingsDialog(doc: Document, onClose?: () => void) {
         setPref(pref.name, val);
       } else if (pref.type === "select") {
         setPref(pref.name, (input as HTMLSelectElement).value);
+      } else if (pref.type === "text") {
+        setPref(pref.name, (input as HTMLInputElement).value.trim());
       }
     }
 

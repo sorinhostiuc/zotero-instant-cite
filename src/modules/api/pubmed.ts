@@ -1,4 +1,5 @@
 import { fetchJSON, fetchXML } from "./base-client";
+import { buildFieldedQuery, hasFieldedTerms } from "../utils/advanced-search";
 import type { PaperResult, SearchOptions, SearchResponse, Author } from "./types";
 
 const ESEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi";
@@ -14,7 +15,9 @@ export async function searchPubMed(options: SearchOptions): Promise<SearchRespon
   // subject area instead of the article that actually carries that DOI.
   const trimmed = options.query.trim().replace(/^https?:\/\/(dx\.)?doi\.org\//i, "");
   const isDOI = /^10\.\d{4,}\/\S+$/.test(trimmed);
-  let term = isDOI ? `${trimmed}[doi]` : options.query;
+  let term = isDOI ? `${trimmed}[doi]`
+    : hasFieldedTerms(options) ? buildFieldedQuery(options.fields!, { title: w => `${w}[ti]`, author: w => `${w}[au]` })
+    : options.query;
   if (options.yearFrom || options.yearTo) {
     const from = options.yearFrom ?? 1900;
     const to = options.yearTo ?? new Date().getFullYear();

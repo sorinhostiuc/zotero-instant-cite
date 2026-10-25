@@ -16,7 +16,7 @@ export async function fetchJSON<T>(url: string, timeoutMs = getDefaultTimeout())
   try {
     return JSON.parse(text) as T;
   } catch (e) {
-    throw new Error(`JSON parse failed for ${url.slice(0, 100)}: ${e}`);
+    throw new Error(`JSON parse failed for ${redactSecrets(url).slice(0, 100)}: ${e}`);
   }
 }
 
@@ -51,7 +51,7 @@ async function httpGet(url: string, timeoutMs: number): Promise<string> {
     } catch (e: any) {
       const sanitized = sanitizeHTTPError(e);
       if (typeof Zotero !== "undefined") {
-        Zotero.log("[InstantCite] Zotero.HTTP.request failed for " + url.slice(0, 80) + ": " + sanitized.message);
+        Zotero.log("[InstantCite] Zotero.HTTP.request failed for " + redactSecrets(url).slice(0, 80) + ": " + sanitized.message);
       }
       throw sanitized;
     }
@@ -86,8 +86,13 @@ function formatHTTPError(status: number, statusText = "", body = ""): string {
   return `HTTP ${status}: ${statusText || "request failed"}${suffix}`;
 }
 
+/** Mask API keys carried in a URL (Zotero.HTTP puts the URL in its error text). */
+export function redactSecrets(text: string): string {
+  return text.replace(/([?&](?:api_key|apikey|key|token)=)[^&\s"']*/gi, "$1***");
+}
+
 function sanitizeHTTPError(err: any): Error {
-  const message = String(err?.message ?? err);
+  const message = redactSecrets(String(err?.message ?? err));
   if (isCloudflareChallenge(message)) {
     const status = message.match(/status code\s+(\d+)|HTTP\s+(\d+)/i);
     const code = status?.[1] || status?.[2] || "403";

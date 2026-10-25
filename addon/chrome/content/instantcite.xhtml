@@ -19,9 +19,42 @@
             type="text"
             class="search-input"
             id="search-input"
-            placeholder="Enter title, author, DOI, or PMID..."
+            placeholder="Enter title, author, DOI, ISBN, or PMID..."
           />
           <button class="search-btn" id="search-btn">Search</button>
+          <button class="advanced-toggle" id="advanced-toggle" aria-expanded="false"
+            title="Search by title, author, DOI/ISBN, type and year">Advanced &#9662;</button>
+        </div>
+
+        <div class="advanced-panel" id="advanced-panel" style="display:none;">
+          <label class="advanced-field advanced-field-wide">
+            <span class="advanced-label">Title</span>
+            <input type="text" id="adv-title" class="advanced-input" placeholder="words in the title" />
+          </label>
+          <label class="advanced-field">
+            <span class="advanced-label">Author</span>
+            <input type="text" id="adv-author" class="advanced-input" placeholder="e.g. Hostiuc" />
+          </label>
+          <label class="advanced-field">
+            <span class="advanced-label">DOI / ISBN</span>
+            <input type="text" id="adv-identifier" class="advanced-input" placeholder="10.xxxx/... or 978-..." />
+          </label>
+          <label class="advanced-field">
+            <span class="advanced-label">Type</span>
+            <select id="adv-type" class="advanced-input">
+              <option value="">Any</option>
+              <option value="article">Article</option>
+              <option value="book">Book</option>
+              <option value="chapter">Book chapter</option>
+              <option value="thesis">Thesis</option>
+              <option value="legal">Legal (case law, legislation)</option>
+            </select>
+          </label>
+          <label class="advanced-field advanced-field-year">
+            <span class="advanced-label">Year</span>
+            <input type="text" id="adv-year" class="advanced-input" placeholder="2020 or 2015-2020" />
+          </label>
+          <button class="advanced-clear" id="adv-clear" title="Clear the advanced fields">Clear</button>
         </div>
 
         <div class="source-tabs">
@@ -39,6 +72,9 @@
           </div>
           <div class="tab" data-source="CrossRef">
             CrossRef <span class="badge">0</span>
+          </div>
+          <div class="tab" data-source="OpenAlex">
+            OpenAlex <span class="badge">0</span>
           </div>
           <div class="tab" data-source="DOAJ">
             DOAJ <span class="badge">0</span>
@@ -86,6 +122,10 @@
           <div class="filter-group checkbox-wrapper">
             <input type="checkbox" id="src-crossref" checked="checked" data-source="CrossRef" class="source-checkbox" />
             <label for="src-crossref" class="filter-label">CrossRef</label>
+          </div>
+          <div class="filter-group checkbox-wrapper">
+            <input type="checkbox" id="src-openalex" checked="checked" data-source="OpenAlex" class="source-checkbox" />
+            <label for="src-openalex" class="filter-label">OpenAlex</label>
           </div>
           <div class="filter-group checkbox-wrapper">
             <input type="checkbox" id="src-doaj" checked="checked" data-source="DOAJ" class="source-checkbox" />

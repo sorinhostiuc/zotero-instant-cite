@@ -10,20 +10,22 @@ import { searchZoteroLocal } from "./api/zotero-local";
 import { searchLoC } from "./api/loc";
 import { searchRoLex } from "./api/ro-lex";
 import { searchBCUB } from "./api/bcub";
+import { searchOpenAlex, lookupOpenAlexWork } from "./api/openalex";
 import { detectQueryType } from "./utils/query-detector";
 import { deduplicateResults } from "./utils/deduplicator";
 import { rankResults, scoreRelevance, stripCompanyForms } from "./utils/relevance";
 import { sortByProvenance } from "./utils/document-priority";
+import { buildCombinedQuery, hasAdvancedFields, matchesAdvanced, sourcesForType } from "./utils/advanced-search";
 import type { PaperResult, SearchOptions, SearchResponse } from "./api/types";
 
 const ALL_SOURCES = [
-  "Zotero", "PubMed", "EuropePMC", "CrossRef", "DOAJ", "OpenLibrary",
+  "Zotero", "PubMed", "EuropePMC", "CrossRef", "OpenAlex", "DOAJ", "OpenLibrary",
   "LoC", "BCUB",
   "ECHR", "EUR-Lex", "RO-Lex", "CourtListener",
 ];
 
 const EXTERNAL_SOURCES = [
-  "PubMed", "EuropePMC", "CrossRef", "DOAJ", "OpenLibrary",
+  "PubMed", "EuropePMC", "CrossRef", "OpenAlex", "DOAJ", "OpenLibrary",
   "LoC", "BCUB",
   "ECHR", "EUR-Lex", "RO-Lex", "CourtListener",
 ];
@@ -52,10 +54,11 @@ export interface SearchProgress extends OrchestratedResult {
 type SourceSearch = { promise: Promise<SearchResponse | null>; source: string };
 
 export async function orchestrateSearch(
-  options: SearchOptions,
+  requested: SearchOptions,
   onProgress?: (progress: SearchProgress) => void,
 ): Promise<OrchestratedResult> {
   const start = Date.now();
+  const options = resolveAdvancedOptions(requested);
   const detection = detectQueryType(options.query);
   const errors: Array<{ source: string; error: string }> = [];
   const sourceCounts: Record<string, number> = {};
@@ -66,6 +69,9 @@ export async function orchestrateSearch(
   const effectiveQuery = detection.type === "DOI" ? detection.value : options.query;
 
   let allResults: PaperResult[] = [];
+  if (!options.query.trim()) {
+    return buildOutcome(allResults, sourceCounts, errors, start, effectiveQuery, options, false);
+  }
 
   // Waits for every source but reports each one as it answers, so one slow
   // source no longer hides the results the others already returned. Results
@@ -102,6 +108,24 @@ export async function orchestrateSearch(
     const idSources = buildIdentifierSources(options, [
       { source: "PubMed", run: () => searchPubMed(pmidOptions) },
     ], pmidOptions, errors);
+    const idResults = await awaitSources(idSources);
+    collectResults(idResults, idSources, allResults, sourceCounts);
+  } else if (detection.type === "ISBN") {
+    // Book catalogues answer an ISBN exactly; article indexes do not hold one.
+    const isbnOptions = { ...options, query: detection.value };
+    const enabled = new Set(options.sources ?? ALL_SOURCES);
+    const externals: Array<{ source: string; run: () => Promise<SearchResponse> }> = [];
+    if (enabled.has("OpenLibrary")) externals.push({ source: "OpenLibrary", run: () => searchOpenLibrary(isbnOptions) });
+    if (enabled.has("BCUB")) externals.push({ source: "BCUB", run: () => searchBCUB(isbnOptions) });
+    if (enabled.has("CrossRef")) externals.push({ source: "CrossRef", run: () => searchCrossRef(isbnOptions) });
+    const isbnSources = buildIdentifierSources(options, externals, isbnOptions, errors);
+    const isbnResults = await awaitSources(isbnSources);
+    collectResults(isbnResults, isbnSources, allResults, sourceCounts);
+  } else if (detection.type === "OPENALEX_ID") {
+    const idOptions = { ...options, query: detection.value };
+    const idSources = buildIdentifierSources(options, [
+      { source: "OpenAlex", run: () => lookupOpenAlexWork(detection.value) },
+    ], idOptions, errors);
     const idResults = await awaitSources(idSources);
     collectResults(idResults, idSources, allResults, sourceCounts);
   } else if (detection.type === "DOI") {
@@ -152,9 +176,12 @@ export async function orchestrateSearch(
     let localResults: PaperResult[] = [];
     if (zoteroEnabled) {
       const localResp = await safeSearch(() => searchZoteroLocal(options), "Zotero", errors);
-      if (localResp && localResp.results.length > 0) {
-        localResults = localResp.results;
-        sourceCounts.Zotero = localResp.results.length;
+      // Fielded constraints apply before the sufficiency check, or a library
+      // hit with the right words in the wrong field would skip the internet.
+      const matching = localResp?.results.filter(p => matchesAdvanced(p, options)) ?? [];
+      if (matching.length > 0) {
+        localResults = matching;
+        sourceCounts.Zotero = matching.length;
       }
     }
 
@@ -204,6 +231,32 @@ export async function orchestrateSearch(
   return buildOutcome(allResults, sourceCounts, errors, start, effectiveQuery, options, doiFallback);
 }
 
+/**
+ * Fold the advanced-search fields into the plain options every source takes.
+ * An identifier wins over everything else (it names one record); otherwise
+ * `query` becomes free text + title + author for sources without field
+ * search, `fields.text` keeps the free text for those with it, and the type
+ * narrows the sources to the ones that hold that kind of document.
+ */
+export function resolveAdvancedOptions(options: SearchOptions): SearchOptions {
+  if (!hasAdvancedFields(options.fields)) {
+    return options.fields ? { ...options, fields: undefined } : options;
+  }
+  const fields = options.fields!;
+  const identifier = fields.identifier?.trim();
+  if (identifier) return { ...options, query: identifier, fields: undefined };
+
+  const resolved: SearchOptions = {
+    ...options,
+    query: buildCombinedQuery(options.query, fields),
+    fields: { ...fields, text: options.query.trim() },
+  };
+  if (fields.itemType) {
+    resolved.sources = [...sourcesForType(options.sources ?? ALL_SOURCES, fields.itemType)];
+  }
+  return resolved;
+}
+
 /** Deduplicate, rank and package the results gathered so far. */
 function buildOutcome(
   allResults: PaperResult[],
@@ -214,7 +267,9 @@ function buildOutcome(
   options: SearchOptions,
   doiFallback: boolean,
 ): OrchestratedResult {
-  const deduplicated = deduplicateResults(allResults);
+  const deduplicated = deduplicateResults(
+    options.fields ? allResults.filter(p => matchesAdvanced(p, options)) : allResults,
+  );
   // Relevance ranks inside a tier; provenance decides the tiers themselves:
   // cited in the document → already in the library → fetched from the internet.
   const ranked = sortByProvenance(
@@ -280,6 +335,7 @@ function buildSearches(
     PubMed: () => searchPubMed(options),
     EuropePMC: () => searchEuropePMC(options),
     CrossRef: () => searchCrossRef(options),
+    OpenAlex: () => searchOpenAlex(options),
     DOAJ: () => searchDOAJ(options),
     OpenLibrary: () => searchOpenLibrary(options),
     LoC: () => searchLoC(options),

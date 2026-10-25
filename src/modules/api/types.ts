@@ -53,6 +53,19 @@ export interface SearchOptions {
   openAccessOnly?: boolean;
   sources?: string[];           // Which sources to search (default: all)
   prioritizedItemIds?: Set<number>; // Local Zotero item IDs to keep first
+  fields?: AdvancedFields;      // Advanced search; `query` then holds only the free text
+}
+
+/** Document kinds the advanced search can restrict to */
+export type AdvancedItemType = "article" | "book" | "chapter" | "thesis" | "legal";
+
+/** Fielded constraints from the advanced search panel */
+export interface AdvancedFields {
+  text?: string;                // Free text alone (set by the orchestrator)
+  title?: string;
+  author?: string;
+  identifier?: string;          // DOI, ISBN or OpenAlex work ID
+  itemType?: AdvancedItemType;
 }
 
 export interface SearchResponse {
@@ -62,4 +75,4 @@ export interface SearchResponse {
   searchTimeMs: number;
 }
 
-export type QueryType = "DOI" | "PMID" | "OPENALEX_ID" | "KEYWORD";
+export type QueryType = "DOI" | "PMID" | "ISBN" | "OPENALEX_ID" | "KEYWORD";

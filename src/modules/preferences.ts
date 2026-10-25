@@ -55,6 +55,9 @@ const DEFAULTS: Record<string, string | number | boolean> = {
 
   // AutoUpdate sort order: "modified-desc" | "title-asc" | "modified-asc"
   "autoUpdateSortOrder": "modified-desc",
+
+  // Optional OpenAlex API key; without one OpenAlex allows a small daily quota
+  "openAlexApiKey": "",
 };
 
 function key(name: string): string {
@@ -178,12 +181,14 @@ export function setDisabledSources(sources: string[]): void {
 export interface PrefDef {
   name: string;
   label: string;
-  type: "number" | "boolean" | "select" | "sources";
+  type: "number" | "boolean" | "select" | "sources" | "text";
   min?: number;
   max?: number;
   unit?: string;
   options?: Array<{ value: string; label: string }>;
   description?: string;
+  placeholder?: string;
+  secret?: boolean;
 }
 
 export const PREF_DEFS: PrefDef[] = [
@@ -278,13 +283,27 @@ export const PREF_DEFS: PrefDef[] = [
     ],
     description: "Order in which items are processed during batch AutoUpdate",
   },
+  {
+    name: "openAlexApiKey",
+    label: "OpenAlex API key",
+    type: "text",
+    secret: true,
+    placeholder: "optional",
+    description: "Optional. Raises the OpenAlex daily quota; get a free key in your openalex.org account settings",
+  },
 ];
+
+export function getOpenAlexApiKey(): string {
+  const v = getPref<string>("openAlexApiKey");
+  return typeof v === "string" ? v.trim() : "";
+}
 
 export const ALL_SOURCE_NAMES = [
   { id: "Zotero", label: "My Library" },
   { id: "PubMed", label: "PubMed" },
   { id: "EuropePMC", label: "Europe PMC" },
   { id: "CrossRef", label: "CrossRef" },
+  { id: "OpenAlex", label: "OpenAlex" },
   { id: "DOAJ", label: "DOAJ" },
   { id: "OpenLibrary", label: "Open Library" },
   { id: "LoC", label: "Library of Congress" },

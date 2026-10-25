@@ -1,5 +1,6 @@
 import { fetchJSON } from "./base-client";
 import { europePmcDoiQuery, isWellFormedDoi } from "../utils/doi";
+import { buildFieldedQuery, hasFieldedTerms } from "../utils/advanced-search";
 import type { PaperResult, SearchOptions, SearchResponse, Author } from "./types";
 
 const BASE_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/search";
@@ -13,7 +14,9 @@ export async function searchEuropePMC(options: SearchOptions): Promise<SearchRes
   // and callers that take results[0] would attach the wrong article.
   let query = isWellFormedDoi(options.query)
     ? europePmcDoiQuery(options.query)
-    : options.query;
+    : hasFieldedTerms(options)
+      ? buildFieldedQuery(options.fields!, { title: w => `TITLE:"${w}"`, author: w => `AUTH:"${w}"` })
+      : options.query;
   if (options.yearFrom || options.yearTo) {
     const from = options.yearFrom ?? 1900;
     const to = options.yearTo ?? new Date().getFullYear();

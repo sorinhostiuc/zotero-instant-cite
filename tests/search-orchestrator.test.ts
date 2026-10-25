@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { orchestrateSearch, type SearchProgress } from "../src/modules/search-orchestrator";
 import { searchPubMed } from "../src/modules/api/pubmed";
+import { searchOpenLibrary } from "../src/modules/api/open-library";
 
 // Mock all API modules
 vi.mock("../src/modules/api/pubmed", () => ({
@@ -106,6 +107,25 @@ describe("orchestrateSearch", () => {
       "zotero-local:42",
       "pubmed:1",
     ]);
+  });
+});
+
+describe("orchestrateSearch advanced search", () => {
+  it("sends an ISBN to the book catalogues only", async () => {
+    vi.mocked(searchPubMed).mockClear();
+    vi.mocked(searchOpenLibrary).mockClear();
+    await orchestrateSearch({ query: "978-3-0365-4193-8", sources: ["OpenLibrary", "PubMed"] });
+    expect(searchOpenLibrary).toHaveBeenCalledWith(expect.objectContaining({ query: "9783036541938" }));
+    expect(searchPubMed).not.toHaveBeenCalled();
+  });
+
+  it("drops results that miss the fielded constraints", async () => {
+    const result = await orchestrateSearch({
+      query: "",
+      sources: ["Zotero", "PubMed"],
+      fields: { title: "brain injury" },
+    });
+    expect(result.papers.map(p => p.id)).toEqual(["pubmed:1"]);
   });
 });
 

@@ -6,7 +6,8 @@ Instant Cite joins bibliographic search, reference management, and citation in o
 
 ## What it does
 
-- Searches by title, author, keyword, DOI, or PMID.
+- Searches by title, author, keyword, DOI, ISBN, or PMID.
+- Advanced search narrows a query by title, author, DOI or ISBN, document type, and year or year range.
 - Queries your Zotero library and the academic, bibliographic, or legal sources you enable.
 - Orders results by relevance and checks them against items already in your library.
 - Shows authors, publication, year, DOI, and abstract before you cite.
@@ -15,7 +16,7 @@ Instant Cite joins bibliographic search, reference management, and citation in o
 
 ## Workflow
 
-Choose the sources and search options in Zotero.
+Choose the sources and search options in Zotero. An OpenAlex API key is optional; adding a free key from your openalex.org account raises the daily OpenAlex quota.
 
 ![Instant Cite settings](docs/images/03-instant-cite-settings.png)
 

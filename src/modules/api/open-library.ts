@@ -1,4 +1,5 @@
 import { fetchJSON } from "./base-client";
+import { normalizeISBN } from "../utils/query-detector";
 import type { PaperResult, SearchOptions, SearchResponse, Author } from "./types";
 
 const BASE_URL = "https://openlibrary.org/search.json";
@@ -8,10 +9,20 @@ export async function searchOpenLibrary(options: SearchOptions): Promise<SearchR
   const maxResults = options.maxResults ?? 20;
 
   const params = new URLSearchParams({
-    q: options.query,
     limit: String(maxResults),
     fields: "key,title,author_name,first_publish_year,publisher,isbn,number_of_pages_median,subject,edition_count",
   });
+  const isbn = normalizeISBN(options.query);
+  const fields = options.fields;
+  if (isbn) {
+    params.set("isbn", isbn);
+  } else if (fields && (fields.title || fields.author)) {
+    if (fields.text) params.set("q", fields.text);
+    if (fields.title) params.set("title", fields.title);
+    if (fields.author) params.set("author", fields.author);
+  } else {
+    params.set("q", options.query);
+  }
 
   const url = `${BASE_URL}?${params.toString()}`;
   const data = await fetchJSON<any>(url);

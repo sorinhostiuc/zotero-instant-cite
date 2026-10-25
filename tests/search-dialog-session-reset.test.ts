@@ -8,6 +8,8 @@ const dialogWindowManager = vi.hoisted(() => ({
   sendDialogToBackground: vi.fn(),
 }));
 const citationDialogReset = vi.hoisted(() => ({
+  ADVANCED_FIELD_IDS: [] as string[],
+  clearAdvancedFields: vi.fn(),
   resetCitationDialogSurface: vi.fn(),
 }));
 

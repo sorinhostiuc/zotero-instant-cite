@@ -67,17 +67,26 @@ export async function addToZotero(paper: PaperResult, skipPDF = false): Promise<
     if (paper.abstract) item.setField("abstractNote", paper.abstract);
   } else {
     // Academic item fields (journalArticle, book, etc.)
-    if (paper.journal && itemType !== "book") item.setField("publicationTitle", paper.journal);
-    if (paper.journal && itemType === "book") item.setField("publisher", paper.journal);
-    if (paper.publisher && itemType === "book" && !paper.journal) item.setField("publisher", paper.publisher);
+    if (itemType === "thesis") {
+      // Theses carry the awarding institution instead of a container title
+      const university = paper.publisher || paper.journal;
+      if (university) trySetField(item, "university", university);
+    } else if (itemType === "bookSection") {
+      if (paper.journal) trySetField(item, "bookTitle", paper.journal);
+      if (paper.publisher) trySetField(item, "publisher", paper.publisher);
+    } else {
+      if (paper.journal && itemType !== "book") trySetField(item, "publicationTitle", paper.journal);
+      if (paper.journal && itemType === "book") item.setField("publisher", paper.journal);
+      if (paper.publisher && itemType === "book" && !paper.journal) item.setField("publisher", paper.publisher);
+    }
     if (paper.journalAbbreviation) trySetField(item, "journalAbbreviation", paper.journalAbbreviation);
     if (paper.issn) trySetField(item, "ISSN", paper.issn);
-    if (paper.volume) item.setField("volume", paper.volume);
-    if (paper.issue) item.setField("issue", paper.issue);
-    if (paper.pages) item.setField("pages", paper.pages);
+    if (paper.volume) trySetField(item, "volume", paper.volume);
+    if (paper.issue) trySetField(item, "issue", paper.issue);
+    if (paper.pages) trySetField(item, "pages", paper.pages);
     if (paper.place) trySetField(item, "place", paper.place);
     if (paper.doi) item.setField("DOI", paper.doi);
-    if (paper.isbn) item.setField("ISBN", paper.isbn);
+    if (paper.isbn) trySetField(item, "ISBN", paper.isbn);
     if (paper.abstract) item.setField("abstractNote", paper.abstract);
   }
 

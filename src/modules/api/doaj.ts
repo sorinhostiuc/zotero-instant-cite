@@ -1,4 +1,5 @@
 import { fetchJSON } from "./base-client";
+import { buildFieldedQuery, hasFieldedTerms } from "../utils/advanced-search";
 import type { PaperResult, SearchOptions, SearchResponse, Author } from "./types";
 
 const BASE_URL = "https://doaj.org/api/search/articles";
@@ -8,7 +9,9 @@ export async function searchDOAJ(options: SearchOptions): Promise<SearchResponse
   const maxResults = Math.min(options.maxResults ?? 20, 100);
   const pageSize = Math.min(maxResults, 50); // DOAJ max page size is 50
 
-  let query = options.query;
+  let query = hasFieldedTerms(options)
+    ? buildFieldedQuery(options.fields!, { title: w => `bibjson.title:"${w}"`, author: w => `bibjson.author.name:"${w}"` })
+    : options.query;
   if (options.yearFrom || options.yearTo) {
     const from = options.yearFrom ?? 1900;
     const to = options.yearTo ?? new Date().getFullYear();

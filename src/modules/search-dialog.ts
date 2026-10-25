@@ -19,9 +19,10 @@ import {
   openFreshDialogWindow,
   openOrReuseDialogWindow,
 } from "./dialog-window-manager";
-import { resetCitationDialogSurface } from "./citation-dialog-reset";
+import { ADVANCED_FIELD_IDS, clearAdvancedFields, resetCitationDialogSurface } from "./citation-dialog-reset";
+import { hasAdvancedFields, parseYearRange } from "./utils/advanced-search";
 import { sortByProvenance } from "./utils/document-priority";
-import type { SearchOptions, PaperResult } from "./api/types";
+import type { AdvancedFields, AdvancedItemType, SearchOptions, PaperResult } from "./api/types";
 
 /** Per-citation properties (locator, prefix, suffix, etc.) */
 interface CitationProps {
@@ -340,6 +341,7 @@ function initDialogEvents(win: Window) {
   searchInput?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") performFullSearch(win);
   });
+  setupAdvancedSearch(win);
 
   // Debounced local search — instant results from My Library as user types
   searchInput?.addEventListener("input", () => {
@@ -1587,10 +1589,66 @@ async function performLocalSearch(win: Window) {
 }
 
 /** Phase 2: Full search — triggered by Search button or Enter */
+/** Advanced panel: toggle, Enter to search from any field, Clear. */
+function setupAdvancedSearch(win: Window) {
+  const doc = win.document;
+  const toggle = doc.getElementById("advanced-toggle") as HTMLButtonElement | null;
+  const panel = doc.getElementById("advanced-panel") as HTMLElement | null;
+  if (!toggle || !panel) return;
+
+  const refreshToggle = () => {
+    toggle.classList.toggle("active", hasAdvancedFields(readAdvancedFields(doc).fields) ||
+      !!(doc.getElementById("adv-year") as HTMLInputElement | null)?.value.trim());
+  };
+
+  toggle.addEventListener("click", () => {
+    const open = panel.style.display === "none";
+    panel.style.display = open ? "" : "none";
+    toggle.setAttribute("aria-expanded", String(open));
+    if (open) (doc.getElementById("adv-title") as HTMLInputElement | null)?.focus();
+  });
+
+  for (const id of ADVANCED_FIELD_IDS) {
+    const el = doc.getElementById(id);
+    el?.addEventListener("keydown", (e: Event) => {
+      if ((e as KeyboardEvent).key === "Enter") performFullSearch(win);
+    });
+    el?.addEventListener("input", refreshToggle);
+    el?.addEventListener("change", refreshToggle);
+  }
+
+  doc.getElementById("adv-clear")?.addEventListener("click", () => {
+    clearAdvancedFields(doc);
+    (doc.getElementById("adv-title") as HTMLInputElement | null)?.focus();
+  });
+}
+
+/** Fielded constraints and the year range typed in the advanced panel. */
+function readAdvancedFields(doc: Document): {
+  fields?: AdvancedFields;
+  years: { yearFrom?: number; yearTo?: number } | null;
+} {
+  const value = (id: string) =>
+    ((doc.getElementById(id) as HTMLInputElement | HTMLSelectElement | null)?.value ?? "").trim();
+  const fields: AdvancedFields = {
+    title: value("adv-title") || undefined,
+    author: value("adv-author") || undefined,
+    identifier: value("adv-identifier") || undefined,
+    itemType: (value("adv-type") || undefined) as AdvancedItemType | undefined,
+  };
+  return {
+    fields: hasAdvancedFields(fields) ? fields : undefined,
+    years: parseYearRange(value("adv-year")),
+  };
+}
+
 async function performFullSearch(win: Window) {
   const doc = win.document;
-  const query = (doc.getElementById("search-input") as HTMLInputElement)?.value?.trim();
-  if (!query) return;
+  const query = (doc.getElementById("search-input") as HTMLInputElement)?.value?.trim() ?? "";
+  const advanced = readAdvancedFields(doc);
+  // A type or year alone is a filter, not a search: something must name the work.
+  const f = advanced.fields;
+  if (!query && !f?.title && !f?.author && !f?.identifier) return;
 
   // Cancel any pending local search
   if (localSearchTimer) {
@@ -1603,6 +1661,7 @@ async function performFullSearch(win: Window) {
   showLoading(doc);
 
   const options: SearchOptions = { query, maxResults: getMaxResults(), prioritizedItemIds: getDocumentItemIds() };
+  if (advanced.fields) options.fields = advanced.fields;
 
   // Year filter: check active button first, then custom range
   const activeYearBtn = doc.querySelector(".year-btn.active") as HTMLElement;
@@ -1613,6 +1672,11 @@ async function performFullSearch(win: Window) {
     if (yearTo?.value) options.yearTo = parseInt(yearTo.value, 10);
   } else if (activeYearBtn?.dataset.year) {
     options.yearFrom = parseInt(activeYearBtn.dataset.year, 10);
+  }
+  // The advanced year is the more specific request, so it replaces the bar.
+  if (advanced.years) {
+    options.yearFrom = advanced.years.yearFrom;
+    options.yearTo = advanced.years.yearTo;
   }
 
   const oaCheckbox = doc.getElementById("oa-filter") as HTMLInputElement;

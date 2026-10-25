@@ -1,19 +1,46 @@
-import { fetchJSON } from "./base-client";
+import { fetchJSON, redactSecrets } from "./base-client";
+import { getOpenAlexApiKey } from "../preferences";
 import type { PaperResult, SearchOptions, SearchResponse, Author } from "./types";
 
 const BASE_URL = "https://api.openalex.org/works";
 
+/** OpenAlex work types behind each advanced-search document kind */
+const OPENALEX_TYPES: Record<string, string[]> = {
+  article: ["article", "preprint", "review", "letter", "editorial"],
+  book: ["book"],
+  chapter: ["book-chapter", "reference-entry"],
+  thesis: ["dissertation"],
+};
+
+/** Filter values are comma-separated, so a comma inside one would split it. */
+function filterValue(text: string): string {
+  return text.replace(/[,|:]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function withApiKey(params: URLSearchParams): URLSearchParams {
+  const key = getOpenAlexApiKey();
+  if (key) params.set("api_key", key);
+  return params;
+}
+
 export async function searchOpenAlex(options: SearchOptions): Promise<SearchResponse> {
   const start = Date.now();
-  const maxResults = Math.min(options.maxResults ?? 20, 25); // Keep small for anonymous pool (no API key)
+  // A larger page costs no more credits, but anonymous calls share a small
+  // daily quota, so keep the payload modest.
+  const maxResults = Math.min(options.maxResults ?? 20, 25);
 
-  const params = new URLSearchParams({
-    search: options.query,
-    per_page: String(maxResults),
-  });
-
-  // Build filters
+  const params = new URLSearchParams({ per_page: String(maxResults) });
+  const fields = options.fields;
   const filters: string[] = [];
+  if (fields && (fields.title?.trim() || fields.author?.trim())) {
+    if (fields.text?.trim()) params.set("search", fields.text.trim());
+    if (fields.title?.trim()) filters.push(`title.search:${filterValue(fields.title)}`);
+    if (fields.author?.trim()) filters.push(`raw_author_name.search:${filterValue(fields.author)}`);
+  } else {
+    params.set("search", options.query);
+  }
+  const types = OPENALEX_TYPES[fields?.itemType ?? ""];
+  if (types) filters.push(`type:${types.join("|")}`);
   if (options.yearFrom || options.yearTo) {
     const from = options.yearFrom ?? 1900;
     const to = options.yearTo ?? new Date().getFullYear();
@@ -26,8 +53,8 @@ export async function searchOpenAlex(options: SearchOptions): Promise<SearchResp
     params.set("filter", filters.join(","));
   }
 
-  const url = `${BASE_URL}?${params.toString()}`;
-  Zotero.log("[InstantCite] OpenAlex URL: " + url);
+  const url = `${BASE_URL}?${withApiKey(params).toString()}`;
+  Zotero.log("[InstantCite] OpenAlex URL: " + redactSecrets(url));
   const data = await fetchJSON<any>(url);
   Zotero.log("[InstantCite] OpenAlex results: " + (data?.results?.length ?? 0));
 
@@ -38,6 +65,17 @@ export async function searchOpenAlex(options: SearchOptions): Promise<SearchResp
     totalCount: data?.meta?.count ?? 0,
     searchTimeMs: Date.now() - start,
   };
+}
+
+/** Fetch one work by its OpenAlex ID (W123...). */
+export async function lookupOpenAlexWork(id: string): Promise<SearchResponse> {
+  const start = Date.now();
+  const params = withApiKey(new URLSearchParams());
+  const query = params.toString();
+  const url = `${BASE_URL}/${encodeURIComponent(id.toUpperCase())}${query ? "?" + query : ""}`;
+  const work = await fetchJSON<any>(url);
+  const results = work?.id ? parseOpenAlexResults({ results: [work] }) : [];
+  return { source: "OpenAlex", results, totalCount: results.length, searchTimeMs: Date.now() - start };
 }
 
 export function parseOpenAlexResults(data: any): PaperResult[] {
@@ -71,12 +109,24 @@ export function parseOpenAlexResults(data: any): PaperResult[] {
     // ISSN from primary location
     const issn = work.primary_location?.source?.issn_l ?? work.primary_location?.source?.issn?.[0] ?? undefined;
 
+    const itemType = OPENALEX_ITEM_TYPES[work.type ?? ""];
+    const source = work.primary_location?.source;
+    const host = source?.display_name ?? "";
+    const isbn = Array.isArray(work.ids?.isbn) ? work.ids.isbn[0] : undefined;
+
     return {
       id: `openalex:${work.id}`,
+      itemType,
+      isbn,
       title: work.title ?? "",
       authors,
       year: work.publication_year ?? 0,
-      journal: work.primary_location?.source?.display_name ?? "",
+      // A thesis host is the repository, a book host is the publisher series:
+      // neither is a journal name.
+      journal: itemType === "thesis" || itemType === "book" ? "" : host,
+      publisher: itemType === "thesis" || itemType === "book"
+        ? source?.host_organization_name ?? (host || undefined)
+        : undefined,
       issn,
       volume,
       issue,
@@ -91,6 +141,14 @@ export function parseOpenAlexResults(data: any): PaperResult[] {
     } as PaperResult;
   });
 }
+
+/** Zotero item types for OpenAlex work types; anything else stays an article */
+const OPENALEX_ITEM_TYPES: Record<string, string> = {
+  "book": "book",
+  "book-chapter": "bookSection",
+  "dissertation": "thesis",
+  "reference-entry": "bookSection",
+};
 
 /** Reconstruct abstract from OpenAlex inverted index format */
 export function reconstructAbstract(invertedIndex: Record<string, number[]>): string {

@@ -14,6 +14,8 @@ export function addQueryCondition(search: any, query: string): void {
   const detection = detectQueryType(query);
   const identifierField = detection.type === "DOI" ? "DOI"
     : detection.type === "PMID" ? "extra"   // Zotero stores PMIDs in Extra
+    : detection.type === "OPENALEX_ID" ? "extra"
+    : detection.type === "ISBN" ? "ISBN"
     : null;
 
   if (identifierField) {
@@ -182,6 +184,7 @@ function zoteroItemToPaperResult(item: any): PaperResult {
 
   return {
     id: "zotero-local:" + item.id,
+    itemType,
     title: (item.getField("title") as string) || "Untitled",
     authors,
     year,

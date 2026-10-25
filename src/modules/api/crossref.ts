@@ -1,9 +1,19 @@
 import { fetchJSON } from "./base-client";
+import { hasFieldedTerms } from "../utils/advanced-search";
+import { normalizeISBN } from "../utils/query-detector";
 import type { PaperResult, SearchOptions, SearchResponse, Author } from "./types";
 
 const BASE_URL = "https://api.crossref.org/works";
 const MAILTO = "sorin.hostiuc@umfcd.ro";
 const DOI_RE = /^10\.\d{4,}\/\S+$/;
+
+/** CrossRef work types behind each advanced-search document kind */
+const CROSSREF_TYPES: Record<string, string[]> = {
+  article: ["journal-article", "proceedings-article", "posted-content"],
+  book: ["book", "monograph", "edited-book", "reference-book"],
+  chapter: ["book-chapter", "book-section", "book-part", "reference-entry"],
+  thesis: ["dissertation"],
+};
 
 function isDOI(query: string): boolean {
   const stripped = query.trim().replace(/^https?:\/\/(dx\.)?doi\.org\//i, "");
@@ -26,22 +36,30 @@ export async function searchCrossRef(options: SearchOptions): Promise<SearchResp
   const maxResults = options.maxResults ?? 20;
 
   const params = new URLSearchParams({
-    query: options.query,
     rows: String(maxResults),
     mailto: MAILTO,
     sort: "relevance",
     order: "desc",
   });
+  const filters: string[] = [];
+  const isbn = normalizeISBN(options.query);
+  const fields = options.fields;
+  if (isbn) {
+    filters.push(`isbn:${isbn}`);
+  } else if (hasFieldedTerms(options)) {
+    if (fields!.text?.trim()) params.set("query", fields!.text.trim());
+    if (fields!.title?.trim()) params.set("query.bibliographic", fields!.title.trim());
+    if (fields!.author?.trim()) params.set("query.author", fields!.author.trim());
+  } else {
+    params.set("query", options.query);
+  }
+  // Same-name CrossRef filters are ORed, so each type is its own clause
+  for (const type of CROSSREF_TYPES[fields?.itemType ?? ""] ?? []) filters.push(`type:${type}`);
 
   // Year filter
-  if (options.yearFrom) {
-    params.set("filter", `from-pub-date:${options.yearFrom}`);
-  }
-  if (options.yearTo) {
-    const existing = params.get("filter") || "";
-    const toFilter = `until-pub-date:${options.yearTo}`;
-    params.set("filter", existing ? `${existing},${toFilter}` : toFilter);
-  }
+  if (options.yearFrom) filters.push(`from-pub-date:${options.yearFrom}`);
+  if (options.yearTo) filters.push(`until-pub-date:${options.yearTo}`);
+  if (filters.length > 0) params.set("filter", filters.join(","));
 
   const url = `${BASE_URL}?${params.toString()}`;
   const data = await fetchJSON<any>(url);
@@ -165,7 +183,11 @@ function mapCrossRefItem(item: any): PaperResult {
   const isBook = crossrefType === "book" || crossrefType === "monograph" ||
     crossrefType === "edited-book" || crossrefType === "reference-book" ||
     crossrefType === "book-set";
-  const publisher: string | undefined = item.publisher ?? undefined;
+  const isChapter = crossrefType === "book-chapter" || crossrefType === "book-section" ||
+    crossrefType === "book-part" || crossrefType === "reference-entry";
+  const isThesis = crossrefType === "dissertation";
+  const institution: string | undefined = item.institution?.[0]?.name ?? undefined;
+  const publisher: string | undefined = (isThesis ? institution : undefined) ?? item.publisher ?? undefined;
   const place: string | undefined = item["publisher-location"] ?? undefined;
 
   // For books, use publisher as journal (bridge maps journal→publisher for books)
@@ -184,9 +206,9 @@ function mapCrossRefItem(item: any): PaperResult {
     volume: item.volume ?? undefined,
     issue: item.issue ?? undefined,
     pages: item.page ?? undefined,
-    publisher: isBook ? publisher : undefined,
+    publisher: isBook || isChapter || isThesis ? publisher : undefined,
     place,
-    itemType: isBook ? "book" : undefined,
+    itemType: isBook ? "book" : isChapter ? "bookSection" : isThesis ? "thesis" : undefined,
     doi,
     abstract: item.abstract?.replace(/<[^>]*>/g, "") ?? undefined,
     citationCount: item["is-referenced-by-count"] ?? 0,
