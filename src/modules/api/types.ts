@@ -78,6 +78,8 @@ export interface SearchResponse {
   results: PaperResult[];
   totalCount: number;
   searchTimeMs: number;
+  /** A caveat shown next to the results, e.g. a record built from the link alone */
+  notice?: string;
 }
 
 export type QueryType = "DOI" | "PMID" | "ISBN" | "OPENALEX_ID" | "URL" | "KEYWORD";

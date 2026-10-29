@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { JSDOM } from "jsdom";
-import { isBotCheckPage, paperFromTranslatorItem, translatorItemForSaving, webpageFromMeta } from "../src/modules/api/web-page";
+import {
+  applyCitationTags, citationTags, fillThinItem, isBotCheckPage, paperFromTranslatorItem, translatorItemForSaving,
+  webpageFromMeta, webpageFromURL,
+} from "../src/modules/api/web-page";
 
 const journalItem = {
   itemType: "journalArticle",
@@ -104,5 +107,134 @@ describe("pages without a translator", () => {
     expect(isBotCheckPage(parse(cloudflare), cloudflare)).toBe(true);
     const page = "<html><head><title>Proiecte IT</title></head><body><p>text</p></body></html>";
     expect(isBotCheckPage(parse(page), page)).toBe(false);
+  });
+
+  it("recognises a robot check whose title is in another language", () => {
+    const localized = `<html><head><title>Doar un moment...</title></head><body>
+      <div id="challenge-stage"></div><script>window._cf_chl_opt = { cType: "managed" };</script>
+      ${"<p>.</p>".repeat(800)}</body></html>`;
+    expect(isBotCheckPage(parse(localized), localized)).toBe(true);
+  });
+
+  it("reads title, authors, date and site from JSON-LD", () => {
+    const doc = parse(`<html lang="en"><head><title>Ignored</title>
+      <script type="application/ld+json">{ "@context": "https://schema.org", "@graph": [
+        { "@type": "WebSite", "name": "Wrong" },
+        { "@type": "NewsArticle", "headline": "Autopsy findings in 2025",
+          "author": [{ "@type": "Person", "name": "Jane Doe" },
+                     { "@type": "Person", "givenName": "Ion", "familyName": "Popescu" },
+                     { "@type": "Organization", "name": "News Desk" }],
+          "datePublished": "2025-02-03T08:00:00+02:00",
+          "publisher": { "@type": "Organization", "name": "Example News" },
+          "description": "What the report found." } ] }</script>
+      <script type="application/ld+json">{ broken</script>
+      </head><body></body></html>`);
+    const record = webpageFromMeta(doc, "https://news.example.org/a");
+    expect(record).toMatchObject({
+      title: "Autopsy findings in 2025",
+      websiteTitle: "Example News",
+      date: "2025-02-03",
+      abstractNote: "What the report found.",
+      language: "en",
+      accessDate: "CURRENT_TIMESTAMP",
+    });
+    expect(record.creators).toEqual([
+      { firstName: "Jane", lastName: "Doe", creatorType: "author" },
+      { lastName: "Popescu", firstName: "Ion", creatorType: "author" },
+      { name: "News Desk", creatorType: "author" },
+    ]);
+  });
+
+  it("reads the heading, byline and date from the body when nothing declares them", () => {
+    const doc = parse(`<html><head><title>Story about bones | Example</title></head><body>
+      <aside><span class="author">Comment Writer</span></aside>
+      <article><h1> Story about bones </h1>
+        <p class="byline">By Jane Doe and John Smith</p>
+        <time datetime="2024-11-30T09:15">30 Nov</time></article></body></html>`);
+    const record = webpageFromMeta(doc, "https://www.example.org/story");
+    expect(record).toMatchObject({ title: "Story about bones", websiteTitle: "example.org", date: "2024-11-30" });
+    expect(record.creators.map((c: any) => c.lastName)).toEqual(["Doe", "Smith"]);
+  });
+
+  it("reads the citation the page declares in property= tags", () => {
+    const doc = parse(`<html><head>
+      <meta property="og:title" content="(PDF) Consent in prison">
+      <meta property="citation_title" content="Consent in prison">
+      <meta property="citation_author" content="Hostiuc Sorin">
+      <meta property="citation_author" content="Dermengiu D.">
+      <meta property="citation_publication_date" content="2015/06/01">
+      <meta property="citation_journal_title" content="Romanian Journal of Legal Medicine">
+      <meta property="citation_publisher" content="Romanian Society of Legal Medicine">
+      <meta property="citation_issn" content="1221-8618">
+      <meta property="citation_firstpage" content="12"><meta property="citation_lastpage" content="18">
+      <script type="application/ld+json">{ "@type": "ScholarlyArticle", "author": [
+        { "@type": "Person", "name": "Sorin Hostiuc" }, { "@type": "Person", "name": "Dan Dermengiu" }] }</script>
+      </head><body></body></html>`);
+    const tags = citationTags(doc);
+    expect(tags).toEqual({
+      title: "Consent in prison",
+      creators: [
+        { lastName: "Hostiuc", firstName: "Sorin", creatorType: "author" },
+        { lastName: "Dermengiu", firstName: "Dan", creatorType: "author" },
+      ],
+      date: "2015-06-01",
+      publicationTitle: "Romanian Journal of Legal Medicine",
+      pages: "12-18",
+      ISSN: "1221-8618",
+      publisher: "Romanian Society of Legal Medicine",
+    });
+    expect(webpageFromMeta(doc, "https://rg.example/p").creators).toEqual(tags.creators);
+
+    const guessed: Record<string, any> = { itemType: "journalArticle", title: "(PDF) Consent in prison",
+      creators: [], date: "2026-09-26", publicationTitle: "ResearchGate" };
+    applyCitationTags(guessed, tags);
+    expect(guessed).toMatchObject({ title: "Consent in prison", date: "2015-06-01",
+      publicationTitle: "Romanian Journal of Legal Medicine", pages: "12-18" });
+    expect(guessed).not.toHaveProperty("publisher");
+    const page: Record<string, any> = { itemType: "webpage", title: "T" };
+    applyCitationTags(page, tags);
+    expect(page).not.toHaveProperty("publicationTitle");
+    expect(page.date).toBe("2015-06-01");
+  });
+
+  it("keeps the order of citation authors written with a comma", () => {
+    const doc = parse(`<meta name="citation_author" content="de la Cruz, Ana Maria">
+      <script type="application/ld+json">{ "@type": "ScholarlyArticle", "author": { "@type": "Person", "name": "Ana Maria de la Cruz" } }</script>`);
+    expect(citationTags(doc).creators).toEqual([{ lastName: "de la Cruz", firstName: "Ana Maria", creatorType: "author" }]);
+  });
+
+  it("drops the site name the title ends with", () => {
+    const doc = parse(`<meta property="og:title" content="Story - Example News">
+      <meta property="og:site_name" content="Example News">`);
+    expect(webpageFromMeta(doc, "https://example.org/s").title).toBe("Story");
+  });
+});
+
+describe("pages that cannot be read", () => {
+  it("builds a record from the link alone", () => {
+    expect(webpageFromURL("https://www.example.org/news/2025/02/forensic-autopsy-findings-12345.html")).toEqual({
+      itemType: "webpage",
+      title: "Forensic autopsy findings",
+      websiteTitle: "example.org",
+      creators: [],
+      url: "https://www.example.org/news/2025/02/forensic-autopsy-findings-12345.html",
+      accessDate: "CURRENT_TIMESTAMP",
+    });
+    expect(webpageFromURL("https://example.org/a/123").title).toBe("example.org");
+  });
+
+  it("fills only the gaps of a thin translator record", () => {
+    const fromPage = { title: "T", creators: [{ name: "Desk", creatorType: "author" }], date: "2025-01-02",
+      websiteTitle: "Site", abstractNote: "A", language: "ro", url: "https://s.org/x" };
+    const thin: Record<string, any> = { itemType: "webpage", title: "Own title", creators: [], url: "https://s.org/x" };
+    fillThinItem(thin, fromPage);
+    expect(thin).toMatchObject({ title: "Own title", creators: fromPage.creators, date: "2025-01-02",
+      websiteTitle: "Site", accessDate: "CURRENT_TIMESTAMP" });
+    const blog: Record<string, any> = { itemType: "blogPost", title: "B", creators: [], date: "2020" };
+    fillThinItem(blog, fromPage);
+    expect(blog).toMatchObject({ date: "2020", blogTitle: "Site" });
+    const article: Record<string, any> = { itemType: "journalArticle", title: "J", creators: [] };
+    fillThinItem(article, fromPage);
+    expect(article.creators).toEqual([]);
   });
 });
