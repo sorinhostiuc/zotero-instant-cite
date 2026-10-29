@@ -5,6 +5,8 @@ export interface UrlIdentifiers {
   doi?: string;
   pmid?: string;
   openalexId?: string;
+  /** Elsevier Publisher Item Identifier (ScienceDirect, linkinghub) */
+  pii?: string;
 }
 
 // Publisher URLs often append a view name after the DOI
@@ -30,7 +32,7 @@ function safeDecode(text: string): string {
 }
 
 /**
- * Read a DOI, PMID or OpenAlex work ID straight from a link. A lookup by
+ * Read a DOI, PMID, OpenAlex work ID or Elsevier PII straight from a link. A lookup by
  * identifier is exact and works on sites that refuse automated page requests,
  * so it is tried before the page itself is downloaded.
  */
@@ -55,6 +57,11 @@ export function identifiersFromURL(raw: string): UrlIdentifiers {
   if (host === "openalex.org" || host === "api.openalex.org") {
     const m = path.match(/^\/(?:works\/)?(W\d{5,})\/?$/i);
     if (m) return { openalexId: m[1].toUpperCase() };
+  }
+
+  if (host === "sciencedirect.com" || host === "linkinghub.elsevier.com") {
+    const m = path.match(/\/pii\/(S?[0-9X]{16,17})(?:[/?]|$)/i);
+    if (m) return { pii: m[1].toUpperCase() };
   }
 
   const candidates = [path, safeDecode(url.search)];

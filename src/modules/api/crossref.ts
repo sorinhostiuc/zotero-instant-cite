@@ -113,6 +113,18 @@ export async function lookupCrossRefDOI(doi: string): Promise<SearchResponse> {
   }
 }
 
+/**
+ * The work an Elsevier PII names (ScienceDirect links carry one instead of a
+ * DOI). CrossRef keeps it as an alternative id, so no page has to be read.
+ */
+export async function lookupCrossRefPII(pii: string): Promise<SearchResponse> {
+  const start = Date.now();
+  const params = new URLSearchParams({ filter: `alternative-id:${pii}`, rows: "1", mailto: MAILTO });
+  const data = await fetchJSON<any>(`${BASE_URL}?${params}`);
+  const results = (data?.message?.items ?? []).slice(0, 1).map(mapCrossRefItem);
+  return { source: "CrossRef", results, totalCount: results.length, searchTimeMs: Date.now() - start };
+}
+
 /** Largest batch `lookupCrossRefDOIBatch` sends in one request. */
 export const DOI_BATCH_SIZE = 50;
 

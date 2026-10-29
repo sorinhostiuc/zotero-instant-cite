@@ -1,5 +1,5 @@
 import { searchPubMed } from "./api/pubmed";
-import { searchCrossRef, lookupCrossRefDOI } from "./api/crossref";
+import { searchCrossRef, lookupCrossRefDOI, lookupCrossRefPII } from "./api/crossref";
 import { searchOpenLibrary } from "./api/open-library";
 import { searchEuropePMC } from "./api/europepmc";
 import { searchDOAJ } from "./api/doaj";
@@ -153,6 +153,12 @@ export async function orchestrateSearch(
       idSources = buildIdentifierSources(options, [
         { source: "OpenAlex", run: () => lookupOpenAlexWork(id) },
       ], { ...options, query: id }, errors);
+    } else if (urlIds.pii) {
+      // Elsevier article links carry a PII, not a DOI; CrossRef maps one to the other.
+      const pii = urlIds.pii;
+      idSources = buildIdentifierSources(options, [
+        { source: "CrossRef", run: () => lookupCrossRefPII(pii) },
+      ], { ...options, query: detection.value }, errors);
     }
     if (idSources.length > 0) {
       const idResults = await awaitSources(idSources);
@@ -168,6 +174,7 @@ export async function orchestrateSearch(
       // The page goes through Zotero's translators whatever sources are
       // enabled, since the user named it.
       const web = await safeSearch(() => translateWebPage(detection.value), "Web", errors);
+      if (web?.notice) errors.push({ source: "Web", error: web.notice });
       collectResults([web], [{ source: "Web" }], allResults, sourceCounts);
     }
   } else if (detection.type === "DOI") {
